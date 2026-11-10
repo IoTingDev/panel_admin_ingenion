@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 export interface MovimientoPreset { sku?: string; proyecto?: string; tipo?: "Entrada" | "Salida" }
 
@@ -17,9 +17,8 @@ const Ctx = createContext<UiCtx | null>(null);
 export function UiProvider({ children }: { children: ReactNode }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [movimiento, setMov] = useState<MovimientoPreset | null>(null);
-  const [density, setDensityState] = useState<"comoda" | "compacta">(() =>
-    typeof window !== "undefined" && window.localStorage.getItem("ioting.density") === "compacta" ? "compacta" : "comoda",
-  );
+  const [density, setDensityState] = useState<"comoda" | "compacta">("comoda");
+  useEffect(() => { if (window.localStorage.getItem("ioting.density") === "compacta") setDensityState("compacta"); }, []);
   const value = useMemo<UiCtx>(() => ({
     paletteOpen, setPaletteOpen, movimiento,
     openMovimiento: (p) => setMov(p ?? {}),

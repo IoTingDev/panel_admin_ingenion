@@ -1,0 +1,8 @@
+import type { ItemInventario } from '@/lib/api';
+export function download(content: string, filename: string, type = 'text/plain') { const url = URL.createObjectURL(new Blob([content], { type })); const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url); }
+export function csv(rows: Record<string, unknown>[]) { const keys = Object.keys(rows[0] ?? {}); const cell = (v: unknown) => `"${String(v ?? '').replaceAll('"','""')}"`; return '\ufeff' + [keys.map(cell).join(','), ...rows.map(r => keys.map(k => cell(r[k])).join(','))].join('\r\n'); }
+export async function exportInventory(items: ItemInventario[], stocks: Map<string, number>, type: 'excel' | 'pdf') {
+  const rows = items.map(i => ({ SKU: i.sku, Descripción: i.descripcion, Categoría: i.categoria, Marca: i.marca_referencia, Stock: stocks.get(i.sku) ?? 0, Unidad: i.unidad, Estado: i.estado, Ubicación: i.ubicacion, Mínimo: i.stock_minimo }));
+  if (type === 'excel') { const XLSX = await import('xlsx'); const book = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(book, XLSX.utils.json_to_sheet(rows), 'Inventario'); XLSX.writeFile(book, 'inventario-ioting.xlsx'); }
+  else { const { jsPDF } = await import('jspdf'); const { default: autoTable } = await import('jspdf-autotable'); const doc = new jsPDF({ orientation: 'landscape' }); doc.text('IoTing Dev — Inventario', 14, 15); autoTable(doc, { startY: 23, head: [['SKU','Descripción','Categoría','Stock','Estado','Ubicación']], body: rows.map(r => [r.SKU,r.Descripción,r.Categoría,r.Stock,r.Estado,r.Ubicación]), styles: { fontSize: 8 } }); doc.save('inventario-ioting.pdf'); }
+}

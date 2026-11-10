@@ -75,7 +75,7 @@ export function buildSeed(): MockDb {
     { id: p(10), clienteId: c(5), nombre: "Piloto de humedad de suelos", estado: "finalizado", fechaInicio: diasAtras(200), fechaFin: diasAtras(130), responsable: "Santiago Mora", etiquetas: ["suelos"] },
   ];
 
-  const pick = (sku: string) => items.find((i) => i.sku === sku)?.sku ?? items[0].sku;
+  const pick = (sku: string) => items.find((i) => i.sku === sku)?.sku ?? items[0]?.sku ?? sku;
   const movsBase: [number, string, MovimientoInventario["tipo"], number, string | undefined, string][] = [
     [28, "SEN-001", "Salida", 2, p(3), "Instalación tanque 1"],
     [26, "MCU-001", "Salida", 2, p(1), "Nodos de fermentación"],

@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 export function Logo({ className }: { className?: string }) {
   return (
-    <div className={cn("flex shrink-0 items-center justify-center rounded-lg bg-card p-1 shadow-soft", className)}>
+    <div className={cn("flex shrink-0 items-center justify-center rounded-lg bg-logo-surface p-1 shadow-soft", className)}>
       <img src={logo.url} alt="IoTing Dev" className="h-full w-full object-contain" />
     </div>
   );
@@ -42,7 +42,6 @@ export type Tone = "primary" | "success" | "warning" | "info" | "destructive";
 export function StatCard({ label, value, icon: Icon, tone = "primary", hint }: { label: string; value: ReactNode; icon: LucideIcon; tone?: Tone; hint?: string }) {
   return (
     <div className="group relative overflow-hidden rounded-xl border bg-gradient-card p-5 shadow-soft transition-all duration-200 hover:-translate-y-0.5 hover:shadow-elegant">
-      <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary-glow/15 blur-2xl" />
       <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
@@ -121,7 +120,7 @@ export function EmptyState({ icon: Icon, title, text, action }: { icon: LucideIc
 
 export function Panel({ title, children, className, actions }: { title?: string; children: ReactNode; className?: string; actions?: ReactNode }) {
   return (
-    <section className={cn("rounded-xl border bg-card p-5 shadow-soft", className)}>
+    <section className={cn("border-t bg-card/40 py-5", className)}>
       {(title || actions) && (
         <div className="mb-4 flex items-center justify-between gap-2">
           {title && <h3 className="text-base font-semibold text-foreground">{title}</h3>}
