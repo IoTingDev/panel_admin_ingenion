@@ -8,15 +8,15 @@ export type GrupoInventario = "componentes" | "herramientas" | "equipos";
 export interface Cliente {
   id: string;
   razonSocial: string;
-  nit?: string;
+  nit?: string | undefined;
   sector: string;
-  ciudad?: string;
-  contactoNombre?: string;
-  contactoEmail?: string;
-  contactoTelefono?: string;
+  ciudad?: string | undefined;
+  contactoNombre?: string | undefined;
+  contactoEmail?: string | undefined;
+  contactoTelefono?: string | undefined;
   estado: Estado;
   creadoEn: string;
-  notas?: string;
+  notas?: string | undefined;
 }
 
 export interface UsuarioCliente {
@@ -26,7 +26,7 @@ export interface UsuarioCliente {
   email: string;
   rol: RolUsuario;
   estado: Estado;
-  ultimoAcceso?: string;
+  ultimoAcceso?: string | undefined;
   creadoEn: string;
 }
 
@@ -34,12 +34,12 @@ export interface Proyecto {
   id: string;
   clienteId: string;
   nombre: string;
-  descripcion?: string;
+  descripcion?: string | undefined;
   estado: EstadoProyecto;
-  fechaInicio?: string;
-  fechaFin?: string;
-  responsable?: string;
-  etiquetas?: string[];
+  fechaInicio?: string | undefined;
+  fechaFin?: string | undefined;
+  responsable?: string | undefined;
+  etiquetas?: string[] | undefined;
 }
 
 export interface Auditoria {
@@ -49,7 +49,7 @@ export interface Auditoria {
   accion: string;
   entidad: string;
   entidadId: string;
-  detalle?: string;
+  detalle?: string | undefined;
 }
 
 export interface ItemInventario {
@@ -72,8 +72,8 @@ export interface MovimientoInventario {
   sku: string;
   tipo: TipoMovimiento;
   cantidad: number;
-  proyecto?: string;
-  nota?: string;
+  proyecto?: string | undefined;
+  nota?: string | undefined;
 }
 
 export interface InventarioExport {
@@ -122,9 +122,9 @@ export interface NuevoMovimiento {
   sku: string;
   tipo: TipoMovimiento;
   cantidad: number;
-  proyecto?: string;
-  nota?: string;
-  fecha?: string;
+  proyecto?: string | undefined;
+  nota?: string | undefined;
+  fecha?: string | undefined;
 }
 
 export interface InventarioApi {
