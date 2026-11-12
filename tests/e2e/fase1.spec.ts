@@ -50,29 +50,18 @@ test("el logo no depende de Lovable: ninguna petición a /__l5e/ y sin recursos 
     if (u.origin === "http://localhost:8080" && r.status() >= 400)
       malas.push(`${r.status()} ${u.pathname}`);
   });
-  // Precondición explícita: si el archivo del logo aún no se entregó, la prueba lo declara y
-  // exige el respaldo de texto, en vez de pasar en silencio.
-  const hayLogo = existsSync("public/brand/ioting-logo.png");
-  if (!hayLogo)
-    test
-      .info()
-      .annotations.push({ type: "PENDIENTE", description: "Falta public/brand/ioting-logo.png" });
+  // El archivo del logo es una precondición: si falta, la prueba falla en vez de degradarse.
+  expect(existsSync("public/brand/ioting-logo.png")).toBe(true);
   await entrar(page);
   await page.waitForLoadState("networkidle");
   expect(l5e).toEqual([]);
-  if (hayLogo) {
-    expect(malas).toEqual([]);
-    const ancho = await page
-      .locator("aside img[alt='IoTing Dev']")
-      .first()
-      .evaluate((i) => (i as HTMLImageElement).naturalWidth);
-    expect(ancho).toBeGreaterThan(0);
-  } else {
-    expect([...new Set(malas)]).toEqual(["404 /brand/ioting-logo.png"]);
-    await expect(
-      page.locator("aside").getByRole("img", { name: "IoTing Dev" }).first(),
-    ).toContainText("IoTing");
-  }
+  expect(malas).toEqual([]);
+  // La imagen cargó de verdad (no el respaldo de texto): ancho natural > 0.
+  const ancho = await page
+    .locator("aside img[alt='IoTing Dev']")
+    .first()
+    .evaluate((i) => (i as HTMLImageElement).naturalWidth);
+  expect(ancho).toBeGreaterThan(0);
 });
 
 test("notificaciones: se derivan de los datos reales, no son texto fijo", async ({ page }) => {

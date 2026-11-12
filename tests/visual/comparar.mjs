@@ -6,19 +6,21 @@ import { PNG } from "pngjs";
 import pixelmatch from "pixelmatch";
 
 const dir = "tests/visual";
+const BASE = process.argv[2] ?? "baseline";
+const ACTUAL = process.argv[3] ?? "actual";
 const base = fs
-  .readdirSync(path.join(dir, "baseline"))
+  .readdirSync(path.join(dir, BASE))
   .filter((f) => f.endsWith(".png"))
   .sort();
 const filas = [];
 let comparadas = 0;
 for (const f of base) {
-  const pa = path.join(dir, "actual", f);
+  const pa = path.join(dir, ACTUAL, f);
   if (!fs.existsSync(pa)) {
     filas.push({ f, estado: "FALTA captura actual" });
     continue;
   }
-  const a = PNG.sync.read(fs.readFileSync(path.join(dir, "baseline", f)));
+  const a = PNG.sync.read(fs.readFileSync(path.join(dir, BASE, f)));
   const b = PNG.sync.read(fs.readFileSync(pa));
   comparadas++;
   if (a.width !== b.width || a.height !== b.height) {
