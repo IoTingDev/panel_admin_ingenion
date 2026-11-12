@@ -105,7 +105,9 @@ export interface ClientesApi {
 
 export interface UsuariosApi {
   list(): Promise<UsuarioCliente[]>;
-  invitar(data: Pick<UsuarioCliente, "clienteId" | "nombre" | "email" | "rol">): Promise<UsuarioCliente>;
+  invitar(
+    data: Pick<UsuarioCliente, "clienteId" | "nombre" | "email" | "rol">,
+  ): Promise<UsuarioCliente>;
   cambiarRol(id: string, rol: RolUsuario): Promise<UsuarioCliente>;
   cambiarEstado(id: string, estado: Estado, motivo: string): Promise<UsuarioCliente>;
 }

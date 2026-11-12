@@ -2,13 +2,23 @@ const TZ = "America/Bogota";
 
 export function fmtFecha(iso?: string): string {
   if (!iso) return "—";
-  return new Intl.DateTimeFormat("es-CO", { timeZone: TZ, day: "2-digit", month: "short", year: "numeric" }).format(new Date(iso));
+  return new Intl.DateTimeFormat("es-CO", {
+    timeZone: TZ,
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(iso));
 }
 
 export function fmtFechaHora(iso?: string): string {
   if (!iso) return "—";
   return new Intl.DateTimeFormat("es-CO", {
-    timeZone: TZ, day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+    timeZone: TZ,
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   }).format(new Date(iso));
 }
 

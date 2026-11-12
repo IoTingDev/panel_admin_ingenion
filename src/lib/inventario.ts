@@ -1,27 +1,40 @@
 import type { GrupoInventario, ItemInventario, MovimientoInventario } from "@/lib/api/types";
 
 export const PREFIJOS: Record<string, string> = {
-  "Instrumentación": "SEN",
+  Instrumentación: "SEN",
   "Potencia y actuadores": "POT",
-  "Comunicación": "COM",
-  "Pantallas": "DSP",
+  Comunicación: "COM",
+  Pantallas: "DSP",
   "SBC y cámaras": "SBC",
-  "Microcontroladores": "MCU",
+  Microcontroladores: "MCU",
   "Herramientas eléctricas y brocas": "HER",
-  "Cableado": "CAB",
+  Cableado: "CAB",
   "Herramientas de mano": "MAN",
-  "Equipos": "EQP",
+  Equipos: "EQP",
 };
 
 export const GRUPO_POR_PREFIJO: Record<string, GrupoInventario> = {
-  SEN: "componentes", POT: "componentes", COM: "componentes", DSP: "componentes",
-  SBC: "componentes", MCU: "componentes",
-  HER: "herramientas", CAB: "herramientas", MAN: "herramientas",
+  SEN: "componentes",
+  POT: "componentes",
+  COM: "componentes",
+  DSP: "componentes",
+  SBC: "componentes",
+  MCU: "componentes",
+  HER: "herramientas",
+  CAB: "herramientas",
+  MAN: "herramientas",
   EQP: "equipos",
 };
 
 export const CATEGORIAS_POR_GRUPO: Record<GrupoInventario, string[]> = {
-  componentes: ["Instrumentación", "Potencia y actuadores", "Comunicación", "Pantallas", "SBC y cámaras", "Microcontroladores"],
+  componentes: [
+    "Instrumentación",
+    "Potencia y actuadores",
+    "Comunicación",
+    "Pantallas",
+    "SBC y cámaras",
+    "Microcontroladores",
+  ],
   herramientas: ["Herramientas eléctricas y brocas", "Cableado", "Herramientas de mano"],
   equipos: ["Equipos"],
 };
@@ -31,14 +44,20 @@ export function grupoDeSku(sku: string): GrupoInventario {
 }
 
 /** stockActual = cantidad_inicial + Σ entradas − Σ salidas. Nunca se guarda. */
-export function stockActual(item: Pick<ItemInventario, "sku" | "cantidad_inicial">, movs: MovimientoInventario[]): number {
+export function stockActual(
+  item: Pick<ItemInventario, "sku" | "cantidad_inicial">,
+  movs: MovimientoInventario[],
+): number {
   return movs.reduce((acc, m) => {
     if (m.sku !== item.sku) return acc;
     return m.tipo === "Entrada" ? acc + m.cantidad : acc - m.cantidad;
   }, item.cantidad_inicial);
 }
 
-export function stockMap(items: ItemInventario[], movs: MovimientoInventario[]): Map<string, number> {
+export function stockMap(
+  items: ItemInventario[],
+  movs: MovimientoInventario[],
+): Map<string, number> {
   const map = new Map<string, number>();
   for (const i of items) map.set(i.sku, i.cantidad_inicial);
   for (const m of movs) {

@@ -6,3 +6,10 @@ pnpm-lock.yaml
 package-lock.json
 bun.lock
 routeTree.gen.ts
+AGENTS.md
+src/styles.css
+src/data
+src/routes/README.md
+roadmap.md
+README.md
+.lovable

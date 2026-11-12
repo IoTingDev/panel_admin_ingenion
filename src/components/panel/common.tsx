@@ -6,13 +6,28 @@ import { cn } from "@/lib/utils";
 
 export function Logo({ className }: { className?: string }) {
   return (
-    <div className={cn("flex shrink-0 items-center justify-center rounded-lg bg-logo-surface p-1 shadow-soft", className)}>
+    <div
+      className={cn(
+        "flex shrink-0 items-center justify-center rounded-lg bg-logo-surface p-1 shadow-soft",
+        className,
+      )}
+    >
       <img src={logo.url} alt="IoTing Dev" className="h-full w-full object-contain" />
     </div>
   );
 }
 
-export function PageHeader({ eyebrow, title, subtitle, actions }: { eyebrow: string; title: ReactNode; subtitle?: string | undefined; actions?: ReactNode | undefined }) {
+export function PageHeader({
+  eyebrow,
+  title,
+  subtitle,
+  actions,
+}: {
+  eyebrow: string;
+  title: ReactNode;
+  subtitle?: string | undefined;
+  actions?: ReactNode | undefined;
+}) {
   return (
     <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between animate-fade-in">
       <div>
@@ -25,27 +40,46 @@ export function PageHeader({ eyebrow, title, subtitle, actions }: { eyebrow: str
   );
 }
 
-const iconBox = cva("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-primary-foreground shadow-soft", {
-  variants: {
-    tone: {
-      primary: "bg-gradient-primary",
-      success: "bg-gradient-success",
-      warning: "bg-gradient-warning",
-      info: "bg-gradient-info",
-      destructive: "bg-gradient-destructive",
+const iconBox = cva(
+  "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-primary-foreground shadow-soft",
+  {
+    variants: {
+      tone: {
+        primary: "bg-gradient-primary",
+        success: "bg-gradient-success",
+        warning: "bg-gradient-warning",
+        info: "bg-gradient-info",
+        destructive: "bg-gradient-destructive",
+      },
     },
+    defaultVariants: { tone: "primary" },
   },
-  defaultVariants: { tone: "primary" },
-});
+);
 export type Tone = "primary" | "success" | "warning" | "info" | "destructive";
 
-export function StatCard({ label, value, icon: Icon, tone = "primary", hint }: { label: string; value: ReactNode; icon: LucideIcon; tone?: Tone; hint?: string }) {
+export function StatCard({
+  label,
+  value,
+  icon: Icon,
+  tone = "primary",
+  hint,
+}: {
+  label: string;
+  value: ReactNode;
+  icon: LucideIcon;
+  tone?: Tone;
+  hint?: string;
+}) {
   return (
     <div className="group relative overflow-hidden rounded-xl border bg-gradient-card p-5 shadow-soft transition-all duration-200 hover:-translate-y-0.5 hover:shadow-elegant">
       <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
-          <p className="mt-2 font-display text-3xl font-bold tracking-tight text-foreground">{value}</p>
+          <p className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+            {label}
+          </p>
+          <p className="mt-2 font-display text-3xl font-bold tracking-tight text-foreground">
+            {value}
+          </p>
           {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
         </div>
         <div className={iconBox({ tone })}>
@@ -56,24 +90,38 @@ export function StatCard({ label, value, icon: Icon, tone = "primary", hint }: {
   );
 }
 
-const dotTone = cva("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium whitespace-nowrap", {
-  variants: {
-    tone: {
-      success: "border-success/25 bg-success/10 text-success",
-      info: "border-info/30 bg-info/10 text-primary",
-      warning: "border-warning/30 bg-warning/15 text-warning-foreground dark:text-warning",
-      destructive: "border-destructive/25 bg-destructive/10 text-destructive",
-      muted: "border-border bg-muted text-muted-foreground",
+const dotTone = cva(
+  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium whitespace-nowrap",
+  {
+    variants: {
+      tone: {
+        success: "border-success/25 bg-success/10 text-success",
+        info: "border-info/30 bg-info/10 text-primary",
+        warning: "border-warning/30 bg-warning/15 text-warning-foreground dark:text-warning",
+        destructive: "border-destructive/25 bg-destructive/10 text-destructive",
+        muted: "border-border bg-muted text-muted-foreground",
+      },
     },
   },
-});
-const dotBg = { success: "bg-success", info: "bg-info", warning: "bg-warning", destructive: "bg-destructive", muted: "bg-muted-foreground" } as const;
+);
+const dotBg = {
+  success: "bg-success",
+  info: "bg-info",
+  warning: "bg-warning",
+  destructive: "bg-destructive",
+  muted: "bg-muted-foreground",
+} as const;
 
 const ESTADO_TONE: Record<string, keyof typeof dotBg> = {
-  disponible: "success", activo: "success", finalizado: "info",
+  disponible: "success",
+  activo: "success",
+  finalizado: "info",
   "en uso": "info",
-  "en reparación": "warning", suspendido: "warning", pausado: "warning",
-  dañado: "destructive", baja: "destructive",
+  "en reparación": "warning",
+  suspendido: "warning",
+  pausado: "warning",
+  dañado: "destructive",
+  baja: "destructive",
   borrador: "muted",
 };
 
@@ -88,7 +136,11 @@ export function StatusBadge({ estado }: { estado: string }) {
 }
 
 export function LowPill() {
-  return <span className="rounded-full bg-destructive px-1.5 py-0.5 text-[0.65rem] font-bold uppercase text-destructive-foreground">Bajo</span>;
+  return (
+    <span className="rounded-full bg-destructive px-1.5 py-0.5 text-[0.65rem] font-bold uppercase text-destructive-foreground">
+      Bajo
+    </span>
+  );
 }
 
 export function DemoBadge() {
@@ -107,10 +159,22 @@ export function IconBox({ icon: Icon }: { icon: LucideIcon }) {
   );
 }
 
-export function EmptyState({ icon: Icon, title, text, action }: { icon: LucideIcon; title: string; text?: string | undefined; action?: ReactNode | undefined }) {
+export function EmptyState({
+  icon: Icon,
+  title,
+  text,
+  action,
+}: {
+  icon: LucideIcon;
+  title: string;
+  text?: string | undefined;
+  action?: ReactNode | undefined;
+}) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-soft text-primary"><Icon className="h-5 w-5" /></div>
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-soft text-primary">
+        <Icon className="h-5 w-5" />
+      </div>
       <p className="font-display font-semibold text-foreground">{title}</p>
       {text && <p className="max-w-sm text-sm text-muted-foreground">{text}</p>}
       {action}
@@ -118,7 +182,17 @@ export function EmptyState({ icon: Icon, title, text, action }: { icon: LucideIc
   );
 }
 
-export function Panel({ title, children, className, actions }: { title?: string | undefined; children: ReactNode; className?: string | undefined; actions?: ReactNode | undefined }) {
+export function Panel({
+  title,
+  children,
+  className,
+  actions,
+}: {
+  title?: string | undefined;
+  children: ReactNode;
+  className?: string | undefined;
+  actions?: ReactNode | undefined;
+}) {
   return (
     <section className={cn("border-t bg-card/40 py-5", className)}>
       {(title || actions) && (
