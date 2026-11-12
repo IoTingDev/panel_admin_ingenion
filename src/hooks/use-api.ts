@@ -9,6 +9,7 @@ export const qk = {
   items: ["inventario", "items"] as const,
   movimientos: ["inventario", "movimientos"] as const,
   auditoria: ["auditoria"] as const,
+  config: ["configuracion"] as const,
   me: ["auth", "me"] as const,
 };
 
@@ -22,6 +23,8 @@ export const useItems = () =>
   useQuery({ queryKey: qk.items, queryFn: () => api.inventario.listItems() });
 export const useMovimientos = () =>
   useQuery({ queryKey: qk.movimientos, queryFn: () => api.inventario.listMovimientos() });
+export const useConfiguracion = () =>
+  useQuery({ queryKey: qk.config, queryFn: () => api.configuracion.get() });
 export const useAuditoria = () =>
   useQuery({ queryKey: qk.auditoria, queryFn: () => api.auditoria.list() });
 export const useMe = () => useQuery({ queryKey: qk.me, queryFn: () => api.auth.currentUser() });

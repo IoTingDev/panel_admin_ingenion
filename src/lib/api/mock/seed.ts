@@ -1,8 +1,10 @@
 import inventarioJson from "@/data/inventario_ioting.json";
+import { CONFIG_INVENTARIO_DEFECTO } from "@/lib/config-inventario";
 import { inicializarSecuencias, type Secuencias } from "@/lib/inventario";
 import type {
   Auditoria,
   Cliente,
+  Configuracion,
   InventarioExport,
   ItemInventario,
   MovimientoInventario,
@@ -19,6 +21,9 @@ export interface MockDb {
   movimientos: MovimientoInventario[];
   /** Contador por prefijo de SKU; nunca decrece (los SKU eliminados no se reutilizan). */
   secuencias: Secuencias;
+  config: Configuracion;
+  /** Versión del esquema guardado (ver migracion.ts). */
+  version: 2;
 }
 
 const id = (p: string, n: number) => `${p}-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -33,9 +38,12 @@ export const ACTOR = "Juan Camilo Velásquez";
 
 export function buildSeed(): MockDb {
   const inv = inventarioJson as InventarioExport;
-  const items: ItemInventario[] = [...inv.componentes, ...inv.herramientas, ...inv.equipos].map(
-    (i) => ({ ...i }),
-  );
+  const items: ItemInventario[] = [
+    ...inv.componentes,
+    ...inv.herramientas,
+    ...inv.equipos,
+    ...inv.seguridad,
+  ].map((i) => ({ ...i }));
 
   const c = (n: number) => id("c1000000", n);
   const clientes: Cliente[] = [
@@ -278,6 +286,7 @@ export function buildSeed(): MockDb {
       tipo,
       cantidad,
       proyecto: proyecto ? proyectos.find((x) => x.id === proyecto)?.nombre : undefined,
+      ...(proyecto ? { destinoTipo: "proyecto" as const, destinoId: proyecto } : {}),
       nota: nota || undefined,
     }),
   );
@@ -346,5 +355,7 @@ export function buildSeed(): MockDb {
     items,
     movimientos,
     secuencias: inicializarSecuencias(items, movimientos),
+    config: { inventario: structuredClone(CONFIG_INVENTARIO_DEFECTO) },
+    version: 2,
   };
 }

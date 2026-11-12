@@ -12,17 +12,19 @@ import {
   Upload,
   Trash2,
   ArrowLeft,
+  Coins,
 } from "lucide-react";
 import { api, type ItemInventario, type GrupoInventario, type EstadoItem } from "@/lib/api";
-import { useItems, useMovimientos, useApiMutation } from "@/hooks/use-api";
 import {
-  stockMap,
-  esStockBajo,
-  grupoDeSku,
-  CATEGORIAS_POR_GRUPO,
-  PREFIJOS,
-  siguienteSku,
-} from "@/lib/inventario";
+  useConfiguracion,
+  useItems,
+  useMovimientos,
+  useProyectos,
+  useApiMutation,
+} from "@/hooks/use-api";
+import { stockMap, esStockBajo, siguienteSku } from "@/lib/inventario";
+import { GRUPOS as ORDEN_GRUPOS, ROTULO_GRUPO } from "@/lib/config-inventario";
+import { fmtCop } from "@/lib/format";
 import { exportInventory, download } from "@/lib/export";
 import { validateCsv, type ImportRow } from "@/lib/import-movements";
 import { fmtFechaHora, fmtNum } from "@/lib/format";
@@ -55,6 +57,7 @@ import {
   Loading,
 } from "./data-tools";
 import { ConfirmDialog, type ConfirmState } from "./confirm-dialog";
+import { NuevoItemSheet } from "./nuevo-item-sheet";
 import { useUi } from "./ui-context";
 
 /**
@@ -88,11 +91,10 @@ const ESTADOS: EstadoItem[] = ["Disponible", "En uso", "En reparación", "Dañad
 /** «Baja» solo se alcanza con la acción «Dar de baja» (exige motivo y deja auditoría). */
 const estadosEditables = (actual: EstadoItem) =>
   actual === "Baja" ? ESTADOS : ESTADOS.filter((e) => e !== "Baja");
-const GRUPOS: { v: GrupoInventario; l: string }[] = [
-  { v: "componentes", l: "Componentes" },
-  { v: "herramientas", l: "Herramientas y Cableado" },
-  { v: "equipos", l: "Equipos" },
-];
+const GRUPOS: { v: GrupoInventario; l: string }[] = ORDEN_GRUPOS.map((v) => ({
+  v,
+  l: ROTULO_GRUPO[v],
+}));
 
 export function InventarioView() {
   const { data: items = [], isLoading } = useItems();
@@ -124,7 +126,9 @@ export function InventarioView() {
     ({ sku, motivo }: { sku: string; motivo: string }) => api.inventario.darDeBaja(sku, motivo),
     "Ítem dado de baja",
   );
-  const delGrupoTodos = items.filter((i) => grupoDeSku(i.sku) === grupo);
+  const { data: config } = useConfiguracion();
+  const categoriasDelGrupo = config?.inventario.categorias[grupo] ?? [];
+  const delGrupoTodos = items.filter((i) => i.grupo === grupo);
   // Los ítems dados de baja salen de listados y cifras; solo reaparecen al filtrar por «Baja».
   const delGrupo = delGrupoTodos.filter((i) => i.estado !== "Baja");
   let rows = (est === "Baja" ? delGrupoTodos : delGrupo).filter(
@@ -147,9 +151,15 @@ export function InventarioView() {
       <PageHeader
         eyebrow="Gestión"
         title="Inventario"
-        subtitle="Componentes, herramientas y equipos del taller."
+        subtitle="Componentes, herramientas, equipos y material de seguridad y telecom."
         actions={
           <>
+            <Button asChild variant="outline">
+              <Link to="/inventario/valor">
+                <Coins />
+                Valor del inventario
+              </Link>
+            </Button>
             <Button variant="outline" onClick={() => exportInventory(rows, stocks, "excel")}>
               <FileSpreadsheet />
               Excel
@@ -226,7 +236,7 @@ export function InventarioView() {
             setCat(v);
             setSub("");
           }}
-          options={CATEGORIAS_POR_GRUPO[grupo]}
+          options={categoriasDelGrupo}
         />
         <FilterSelect
           label="Subcategoría"
@@ -294,6 +304,9 @@ export function InventarioView() {
                     <span className="font-display text-base font-semibold">{s}</span>{" "}
                     <span className="text-xs text-muted-foreground">{i.unidad}</span>{" "}
                     {esStockBajo(s, i.stock_minimo) && <LowPill />}
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {i.valorUnitario == null ? "Sin valor" : fmtCop(i.valorUnitario)}
+                    </p>
                   </td>
                   <td>
                     <select
@@ -379,120 +392,6 @@ export function InventarioView() {
       <ImportDialog open={importOpen} onClose={() => setImportOpen(false)} />
       <ConfirmDialog state={confirm} onClose={() => setConfirm(null)} />
     </>
-  );
-}
-
-function NuevoItemSheet({
-  open,
-  onClose,
-  grupo,
-  items,
-}: {
-  open: boolean;
-  onClose: () => void;
-  grupo: GrupoInventario;
-  items: ItemInventario[];
-}) {
-  const [categoria, setCategoria] = useState("");
-  const [f, setF] = useState({
-    subcategoria: "",
-    descripcion: "",
-    marca_referencia: "",
-    cantidad_inicial: 0,
-    ubicacion: "",
-    notas: "",
-  });
-  const cat = categoria || CATEGORIAS_POR_GRUPO[grupo][0] || "Equipos";
-  const crear = useApiMutation(api.inventario.createItem, (r) => `Ítem ${r.sku} creado`);
-  return (
-    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent className="overflow-y-auto sm:max-w-lg">
-        <SheetHeader>
-          <SheetTitle>Nuevo ítem</SheetTitle>
-          <SheetDescription>
-            El SKU se genera según la categoría:{" "}
-            <span className="code-id">{siguienteSku(cat, items)}</span>
-          </SheetDescription>
-        </SheetHeader>
-        <form
-          className="mt-6 space-y-3"
-          onSubmit={async (e) => {
-            e.preventDefault();
-            await crear.mutateAsync({
-              ...f,
-              categoria: cat,
-              unidad: "und",
-              estado: "Disponible",
-              stock_minimo: null,
-            });
-            onClose();
-            setF({
-              subcategoria: "",
-              descripcion: "",
-              marca_referencia: "",
-              cantidad_inicial: 0,
-              ubicacion: "",
-              notas: "",
-            });
-          }}
-        >
-          <Label htmlFor="n-cat">Categoría</Label>
-          <select
-            id="n-cat"
-            className="app-select w-full"
-            value={cat}
-            onChange={(e) => setCategoria(e.target.value)}
-          >
-            {Object.keys(PREFIJOS).map((c) => (
-              <option key={c}>{c}</option>
-            ))}
-          </select>
-          {(["subcategoria", "descripcion", "marca_referencia", "ubicacion"] as const).map((k) => (
-            <div key={k} className="space-y-2">
-              <Label htmlFor={`n-${k}`}>
-                {
-                  {
-                    subcategoria: "Subcategoría",
-                    descripcion: "Descripción",
-                    marca_referencia: "Marca / referencia",
-                    ubicacion: "Ubicación",
-                  }[k]
-                }
-              </Label>
-              <Input
-                id={`n-${k}`}
-                required={k === "descripcion" || k === "subcategoria"}
-                value={f[k]}
-                onChange={(e) => setF({ ...f, [k]: e.target.value })}
-              />
-            </div>
-          ))}
-          <Label htmlFor="n-cant">Cantidad inicial</Label>
-          <Input
-            id="n-cant"
-            type="number"
-            min="0"
-            step="1"
-            value={f.cantidad_inicial}
-            onChange={(e) =>
-              setF({ ...f, cantidad_inicial: Math.max(0, Math.floor(Number(e.target.value))) })
-            }
-          />
-          <Label htmlFor="n-notas">Notas</Label>
-          <Textarea
-            id="n-notas"
-            value={f.notas}
-            onChange={(e) => setF({ ...f, notas: e.target.value })}
-          />
-          <div className="flex justify-end gap-2 border-t pt-4">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button disabled={crear.isPending}>Crear ítem</Button>
-          </div>
-        </form>
-      </SheetContent>
-    </Sheet>
   );
 }
 
@@ -598,6 +497,8 @@ export function ItemDetail({ sku }: { sku: string }) {
   const { data: movs = [] } = useMovimientos();
   const { openMovimiento } = useUi();
   const navigate = useNavigate();
+  const { data: config } = useConfiguracion();
+  const { data: proyectos = [] } = useProyectos();
   const item = items.find((i) => i.sku === sku);
   const [tipo, setTipo] = useState("");
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
@@ -630,6 +531,29 @@ export function ItemDetail({ sku }: { sku: string }) {
   const hist = movs
     .filter((m) => m.sku === sku && (!tipo || m.tipo === tipo))
     .sort((a, b) => b.fecha.localeCompare(a.fecha));
+  /** Campo numérico opcional: vacío = sin dato (null). */
+  const campoNum = (
+    k: "valorUnitario" | "anioCompra" | "vidaUtilAnios",
+    label: string,
+    placeholder = "Sin dato",
+  ) => (
+    <div className="space-y-2">
+      <Label htmlFor={`d-${k}`}>{label}</Label>
+      <Input
+        key={String(item[k] ?? "")}
+        id={`d-${k}`}
+        type="number"
+        min="0"
+        step="1"
+        placeholder={placeholder}
+        defaultValue={item[k] ?? ""}
+        onBlur={(e) => {
+          const v = e.target.value === "" ? null : Number(e.target.value);
+          if (v !== (item[k] ?? null)) upd.mutate({ [k]: v });
+        }}
+      />
+    </div>
+  );
   const field = (
     k: "descripcion" | "marca_referencia" | "subcategoria" | "ubicacion" | "notas",
     label: string,
@@ -750,6 +674,59 @@ export function ItemDetail({ sku }: { sku: string }) {
           </div>
           {field("notas", "Notas")}
         </div>
+        <div className="grid gap-x-6 gap-y-3 sm:col-span-2 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="d-categoria">Categoría</Label>
+            <select
+              id="d-categoria"
+              className="app-select w-full"
+              value={`${item.grupo}|${item.categoria}`}
+              onChange={(e) => {
+                const [grupo, categoria] = e.target.value.split("|") as [GrupoInventario, string];
+                upd.mutate({ grupo, categoria });
+              }}
+            >
+              {ORDEN_GRUPOS.map((g) => (
+                <optgroup key={g} label={ROTULO_GRUPO[g]}>
+                  {(config?.inventario.categorias[g] ?? []).map((c) => (
+                    <option key={c} value={`${g}|${c}`}>
+                      {c}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="d-cantidad_inicial">Cantidad inicial</Label>
+            <Input
+              key={item.cantidad_inicial}
+              id="d-cantidad_inicial"
+              type="number"
+              min="0"
+              step="1"
+              defaultValue={item.cantidad_inicial}
+              onBlur={(e) => {
+                const v = Math.max(0, Math.floor(Number(e.target.value)));
+                if (v !== item.cantidad_inicial) upd.mutate({ cantidad_inicial: v });
+              }}
+            />
+          </div>
+          {campoNum("valorUnitario", "Valor unitario (COP)", "Sin valor")}
+          {campoNum("anioCompra", "Año de compra")}
+          {campoNum("vidaUtilAnios", "Vida útil (años)", "Según el grupo")}
+          <div className="space-y-2">
+            <Label htmlFor="d-proveedor">Proveedor</Label>
+            <Input
+              id="d-proveedor"
+              defaultValue={item.proveedor ?? ""}
+              onBlur={(e) => {
+                if (e.target.value !== (item.proveedor ?? ""))
+                  upd.mutate({ proveedor: e.target.value || undefined });
+              }}
+            />
+          </div>
+        </div>
       </div>
       <div className="mb-3 flex items-center justify-between">
         <h3 className="font-semibold">Historial de movimientos</h3>
@@ -767,7 +744,8 @@ export function ItemDetail({ sku }: { sku: string }) {
               <th>Fecha</th>
               <th>Tipo</th>
               <th>Cantidad</th>
-              <th>Proyecto</th>
+              <th>Destino</th>
+              <th>Costo unit.</th>
               <th>Nota</th>
             </tr>
           </thead>
@@ -781,7 +759,12 @@ export function ItemDetail({ sku }: { sku: string }) {
                   </span>
                 </td>
                 <td>{m.cantidad}</td>
-                <td>{m.proyecto || "—"}</td>
+                <td>
+                  {m.destinoTipo === "proyecto"
+                    ? (proyectos.find((p) => p.id === m.destinoId)?.nombre ?? m.proyecto ?? "—")
+                    : m.proyecto || "—"}
+                </td>
+                <td>{m.costoUnitario == null ? "—" : fmtCop(m.costoUnitario)}</td>
                 <td>{m.nota || "—"}</td>
               </tr>
             ))}

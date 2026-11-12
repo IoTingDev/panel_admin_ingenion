@@ -7,6 +7,7 @@ const api = mockApi;
 const nuevoItem = (
   over: Partial<Omit<ItemInventario, "sku">> = {},
 ): Omit<ItemInventario, "sku"> => ({
+  grupo: "componentes",
   categoria: "Instrumentación",
   subcategoria: "Nivel",
   descripcion: "Ítem de prueba",
@@ -47,7 +48,7 @@ describe("1.1 SKU no se reutiliza", () => {
 
   it("no reasigna el SKU de movimientos huérfanos de una base ya guardada", async () => {
     // Una base v1 con un ítem borrado que dejó movimientos: el SKU SEN-099 sigue "ocupado".
-    const raw = JSON.parse(window.localStorage.getItem("ioting.mock.db.v1") ?? "{}");
+    const raw = JSON.parse(window.localStorage.getItem("ioting.mock.db.v2") ?? "{}");
     delete raw.secuencias; // una base v1 real no tiene contador
     raw.movimientos.push({
       id: "huerfano",
@@ -56,6 +57,9 @@ describe("1.1 SKU no se reutiliza", () => {
       tipo: "Entrada",
       cantidad: 5,
     });
+    // Se guarda como base v1 (sin contador ni versión) y se quita la v2: la app debe migrarla.
+    delete raw.version;
+    window.localStorage.removeItem("ioting.mock.db.v2");
     window.localStorage.setItem("ioting.mock.db.v1", JSON.stringify(raw));
     const { resetMemoria } = await import("@/lib/api/mock");
     resetMemoria();

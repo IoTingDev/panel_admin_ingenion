@@ -8,6 +8,7 @@ export const RUTAS: { nombre: string; ruta: string }[] = [
   { nombre: "proyecto-1", ruta: "/proyectos/p3000000-0000-4000-8000-000000000001" },
   { nombre: "inventario", ruta: "/inventario" },
   { nombre: "inventario-item", ruta: "/inventario/SEN-001" },
+  { nombre: "inventario-valor", ruta: "/inventario/valor" },
   { nombre: "auditoria", ruta: "/auditoria" },
   { nombre: "configuracion", ruta: "/configuracion" },
 ];

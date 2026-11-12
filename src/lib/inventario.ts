@@ -1,47 +1,11 @@
-import type { GrupoInventario, ItemInventario, MovimientoInventario } from "@/lib/api/types";
-
-export const PREFIJOS: Record<string, string> = {
-  Instrumentación: "SEN",
-  "Potencia y actuadores": "POT",
-  Comunicación: "COM",
-  Pantallas: "DSP",
-  "SBC y cámaras": "SBC",
-  Microcontroladores: "MCU",
-  "Herramientas eléctricas y brocas": "HER",
-  Cableado: "CAB",
-  "Herramientas de mano": "MAN",
-  Equipos: "EQP",
-};
-
-export const GRUPO_POR_PREFIJO: Record<string, GrupoInventario> = {
-  SEN: "componentes",
-  POT: "componentes",
-  COM: "componentes",
-  DSP: "componentes",
-  SBC: "componentes",
-  MCU: "componentes",
-  HER: "herramientas",
-  CAB: "herramientas",
-  MAN: "herramientas",
-  EQP: "equipos",
-};
-
-export const CATEGORIAS_POR_GRUPO: Record<GrupoInventario, string[]> = {
-  componentes: [
-    "Instrumentación",
-    "Potencia y actuadores",
-    "Comunicación",
-    "Pantallas",
-    "SBC y cámaras",
-    "Microcontroladores",
-  ],
-  herramientas: ["Herramientas eléctricas y brocas", "Cableado", "Herramientas de mano"],
-  equipos: ["Equipos"],
-};
-
-export function grupoDeSku(sku: string): GrupoInventario {
-  return GRUPO_POR_PREFIJO[sku.slice(0, 3)] ?? "componentes";
-}
+import type {
+  ConfigInventario,
+  GrupoInventario,
+  ItemInventario,
+  MovimientoInventario,
+  NuevoMovimiento,
+} from "@/lib/api/types";
+import { CONFIG_INVENTARIO_DEFECTO, GRUPOS } from "@/lib/config-inventario";
 
 /** stockActual = cantidad_inicial + Σ entradas − Σ salidas. Nunca se guarda. */
 export function stockActual(
@@ -55,7 +19,7 @@ export function stockActual(
 }
 
 export function stockMap(
-  items: ItemInventario[],
+  items: Pick<ItemInventario, "sku" | "cantidad_inicial">[],
   movs: MovimientoInventario[],
 ): Map<string, number> {
   const map = new Map<string, number>();
@@ -72,27 +36,23 @@ export function esStockBajo(stock: number, minimo: number | null): boolean {
   return minimo !== null && stock <= minimo;
 }
 
-/** Siguiente SKU: prefijo de la categoría + consecutivo de tres cifras. */
-export function siguienteSku(categoria: string, items: Pick<ItemInventario, "sku">[]): string {
-  const prefijo = PREFIJOS[categoria];
-  if (!prefijo) throw new Error(`Categoría sin prefijo: ${categoria}`);
-  const max = items
-    .filter((i) => i.sku.startsWith(`${prefijo}-`))
-    .reduce((m, i) => Math.max(m, Number.parseInt(i.sku.slice(4), 10) || 0), 0);
-  return `${prefijo}-${String(max + 1).padStart(3, "0")}`;
-}
-
-/** Valida que una salida no deje stock negativo. Devuelve mensaje de error o null. */
-export function validarSalida(stock: number, cantidad: number): string | null {
-  if (cantidad > stock) {
-    return `Stock insuficiente: hay ${stock} und y se intenta sacar ${cantidad}.`;
-  }
-  return null;
-}
-
 /** Prefijo de un SKU ("SEN-012" → "SEN"). */
 export const prefijoDeSku = (sku: string) => sku.slice(0, sku.indexOf("-"));
 const numeroDeSku = (sku: string) => Number.parseInt(sku.slice(sku.indexOf("-") + 1), 10) || 0;
+
+/** Siguiente SKU a partir de lo existente (función pura; el contador real es `Secuencias`). */
+export function siguienteSku(
+  categoria: string,
+  items: Pick<ItemInventario, "sku">[],
+  prefijos: Record<string, string> = CONFIG_INVENTARIO_DEFECTO.prefijos,
+): string {
+  const prefijo = prefijos[categoria];
+  if (!prefijo) throw new Error(`Categoría sin prefijo: ${categoria}`);
+  const max = items
+    .filter((i) => i.sku.startsWith(`${prefijo}-`))
+    .reduce((m, i) => Math.max(m, numeroDeSku(i.sku)), 0);
+  return `${prefijo}-${String(max + 1).padStart(3, "0")}`;
+}
 
 export type Secuencias = Record<string, number>;
 
@@ -114,12 +74,24 @@ export function inicializarSecuencias(
 }
 
 /** Reserva el siguiente SKU de la categoría y avanza el contador (muta `secuencias`). */
-export function reservarSku(categoria: string, secuencias: Secuencias): string {
-  const prefijo = PREFIJOS[categoria];
+export function reservarSku(
+  categoria: string,
+  secuencias: Secuencias,
+  prefijos: Record<string, string>,
+): string {
+  const prefijo = prefijos[categoria];
   if (!prefijo) throw new Error(`Categoría sin prefijo: ${categoria}`);
   const n = (secuencias[prefijo] ?? 0) + 1;
   secuencias[prefijo] = n;
   return `${prefijo}-${String(n).padStart(3, "0")}`;
+}
+
+/** Valida que una salida no deje stock negativo. Devuelve mensaje de error o null. */
+export function validarSalida(stock: number, cantidad: number): string | null {
+  if (cantidad > stock) {
+    return `Stock insuficiente: hay ${stock} und y se intenta sacar ${cantidad}.`;
+  }
+  return null;
 }
 
 export interface FilaLote {
@@ -134,7 +106,7 @@ export function validarLote(
   movs: MovimientoInventario[],
   filas: FilaLote[],
 ): { fila: number; error: string }[] {
-  const stocks = stockMap(items as ItemInventario[], movs);
+  const stocks = stockMap(items, movs);
   const errores: { fila: number; error: string }[] = [];
   filas.forEach((f, i) => {
     const fila = i + 1;
@@ -150,4 +122,78 @@ export function validarLote(
     stocks.set(f.sku, actual + (f.tipo === "Entrada" ? f.cantidad : -f.cantidad));
   });
   return errores;
+}
+
+/** «Hoy» como AAAA-MM-DD en la zona horaria del negocio (América/Bogotá). */
+export const hoyBogota = (ahora = new Date()) =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" }).format(ahora);
+
+/**
+ * Normaliza la fecha de un movimiento a ISO. Solo fecha (AAAA-MM-DD) → mediodía UTC de ese día.
+ * Devuelve error si es inválida o futura (el pasado se permite).
+ */
+export function normalizarFecha(
+  fecha: string | undefined,
+  ahora = new Date(),
+): { iso: string; error: "" } | { iso: ""; error: string } {
+  if (!fecha) return { iso: ahora.toISOString(), error: "" };
+  const soloDia = /^\d{4}-\d{2}-\d{2}$/.test(fecha);
+  const t = Date.parse(soloDia ? `${fecha}T12:00:00.000Z` : fecha);
+  if (Number.isNaN(t)) return { iso: "", error: "Fecha inválida." };
+  const futura = soloDia ? fecha > hoyBogota(ahora) : t > ahora.getTime() + 60_000;
+  if (futura) return { iso: "", error: "La fecha no puede ser futura." };
+  return { iso: new Date(t).toISOString(), error: "" };
+}
+
+/** Errores de los campos de un movimiento, sin mirar el stock. "" si está bien. */
+export function errorCamposMovimiento(
+  m: NuevoMovimiento,
+  existeDestino: (tipo: "proyecto" | "trabajo", id: string) => boolean,
+  ahora = new Date(),
+): string {
+  const f = normalizarFecha(m.fecha, ahora);
+  if (f.error) return f.error;
+  if (m.costoUnitario !== undefined) {
+    if (m.tipo !== "Entrada") return "El costo unitario solo aplica a entradas (compras).";
+    if (!Number.isInteger(m.costoUnitario) || m.costoUnitario < 0)
+      return "Costo unitario inválido (entero COP ≥ 0).";
+  }
+  if (m.destinoTipo || m.destinoId) {
+    if (m.tipo !== "Salida") return "El destino solo aplica a salidas.";
+    if (!m.destinoTipo || !m.destinoId || !existeDestino(m.destinoTipo, m.destinoId))
+      return "El destino indicado no existe.";
+  }
+  return "";
+}
+
+/** Errores de los campos editables de un ítem. "" si está bien. */
+export function errorCamposItem(
+  data: Partial<ItemInventario>,
+  actual: Pick<ItemInventario, "grupo" | "categoria"> | undefined,
+  cfg: ConfigInventario,
+  anioActual = new Date().getFullYear(),
+): string {
+  const grupo = data.grupo ?? actual?.grupo;
+  const categoria = data.categoria ?? actual?.categoria;
+  if (data.grupo !== undefined && !GRUPOS.includes(data.grupo as GrupoInventario))
+    return `Grupo inválido: «${String(data.grupo)}».`;
+  if ((data.grupo !== undefined || data.categoria !== undefined) && grupo && categoria) {
+    if (!cfg.categorias[grupo].includes(categoria))
+      return `La categoría «${categoria}» no pertenece al grupo ${grupo}.`;
+  }
+  const a = data.anioCompra;
+  if (a != null && (!Number.isInteger(a) || a < 1990 || a > anioActual))
+    return `Año de compra inválido (1990..${anioActual}).`;
+  const v = data.valorUnitario;
+  if (v != null && (!Number.isInteger(v) || v < 0))
+    return "Valor unitario inválido (entero COP ≥ 0).";
+  const vida = data.vidaUtilAnios;
+  if (vida != null && (!Number.isFinite(vida) || vida <= 0))
+    return "Vida útil inválida (años > 0).";
+  if (
+    data.cantidad_inicial !== undefined &&
+    (!Number.isInteger(data.cantidad_inicial) || data.cantidad_inicial < 0)
+  )
+    return "Cantidad inicial inválida (entero ≥ 0).";
+  return "";
 }

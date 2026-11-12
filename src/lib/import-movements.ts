@@ -5,7 +5,7 @@ export interface ImportRow {
   data: NuevoMovimiento;
   error: string;
 }
-function split(line: string) {
+export function splitCsvLine(line: string) {
   return (line.match(/("(?:[^"]|"")*"|[^,]*)(,|$)/g) ?? [])
     .map((s) => s.replace(/,$/, "").replace(/^"|"$/g, "").replaceAll('""', '"'))
     .filter((_, i, a) => i < a.length - 1);
@@ -19,12 +19,12 @@ export function validateCsv(
     .replace(/^\ufeff/, "")
     .trim()
     .split(/\r?\n/);
-  const headers = split(lines.shift() ?? "").map((s) => s.trim().toLowerCase());
+  const headers = splitCsvLine(lines.shift() ?? "").map((s) => s.trim().toLowerCase());
   if (["fecha", "sku", "tipo", "cantidad", "proyecto", "nota"].some((h) => !headers.includes(h)))
     throw new Error("Encabezado requerido: fecha,sku,tipo,cantidad,proyecto,nota");
   const stocks = stockMap(items, movements);
   return lines.map((line, index) => {
-    const cols = split(line);
+    const cols = splitCsvLine(line);
     const get = (k: string) => cols[headers.indexOf(k)]?.trim() ?? "";
     const sku = get("sku");
     const rawType = get("tipo");

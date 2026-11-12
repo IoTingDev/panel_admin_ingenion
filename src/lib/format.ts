@@ -47,3 +47,12 @@ export function iniciales(nombre?: string): string {
 export function nombreCorto(nombre?: string): string {
   return (nombre ?? "").trim().split(/\s+/).slice(0, 2).join(" ");
 }
+
+/** Pesos colombianos sin decimales: $ 1.250.000. */
+export function fmtCop(n: number): string {
+  return new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    maximumFractionDigits: 0,
+  }).format(n);
+}

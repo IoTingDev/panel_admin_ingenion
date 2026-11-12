@@ -9,6 +9,7 @@ const item = (
   estado: ItemInventario["estado"] = "Disponible",
 ): ItemInventario => ({
   sku,
+  grupo: "componentes",
   categoria: "x",
   subcategoria: "x",
   descripcion: sku,

@@ -252,7 +252,11 @@ export function ProyectoDetail({ id }: { id: string }) {
       destructive: true,
       onConfirm: (motivo) => change.mutateAsync({ estado: "baja", motivo }),
     });
-  const materials = movs.filter((m) => m.proyecto === p.nombre);
+  const materials = movs.filter(
+    (m) =>
+      (m.destinoTipo === "proyecto" && m.destinoId === p.id) ||
+      (!m.destinoId && m.proyecto === p.nombre),
+  );
   return (
     <>
       <Button asChild variant="link" className="mb-4 px-0">
@@ -339,7 +343,11 @@ export function ProyectoDetail({ id }: { id: string }) {
         </TabsContent>
         <TabsContent value="materiales">
           <div className="flex justify-end py-4">
-            <Button onClick={() => openMovimiento({ proyecto: p.nombre, tipo: "Salida" })}>
+            <Button
+              onClick={() =>
+                openMovimiento({ destino: { tipo: "proyecto", id: p.id }, tipo: "Salida" })
+              }
+            >
               <ArrowUpRight />
               Registrar salida para este proyecto
             </Button>

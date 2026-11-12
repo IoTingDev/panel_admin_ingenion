@@ -2,7 +2,8 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 
 export interface MovimientoPreset {
   sku?: string;
-  proyecto?: string;
+  /** Destino ya fijado (p. ej. «Registrar material usado» desde un proyecto o trabajo). */
+  destino?: { tipo: "proyecto" | "trabajo"; id: string };
   tipo?: "Entrada" | "Salida";
 }
 

@@ -19,6 +19,7 @@ import { Route as PanelClientesIndexRouteImport } from './routes/_panel/clientes
 import { Route as PanelClientesIdRouteImport } from './routes/_panel/clientes/$id'
 import { Route as PanelInventarioIndexRouteImport } from './routes/_panel/inventario/index'
 import { Route as PanelInventarioSkuRouteImport } from './routes/_panel/inventario/$sku'
+import { Route as PanelInventarioValorRouteImport } from './routes/_panel/inventario/valor'
 import { Route as PanelProyectosIndexRouteImport } from './routes/_panel/proyectos/index'
 import { Route as PanelProyectosIdRouteImport } from './routes/_panel/proyectos/$id'
 
@@ -71,6 +72,11 @@ const PanelInventarioSkuRoute = PanelInventarioSkuRouteImport.update({
   path: '/inventario/$sku',
   getParentRoute: () => PanelRouteRoute,
 } as any)
+const PanelInventarioValorRoute = PanelInventarioValorRouteImport.update({
+  id: '/inventario/valor',
+  path: '/inventario/valor',
+  getParentRoute: () => PanelRouteRoute,
+} as any)
 const PanelProyectosIndexRoute = PanelProyectosIndexRouteImport.update({
   id: '/proyectos/',
   path: '/proyectos/',
@@ -90,6 +96,7 @@ export interface FileRoutesByFullPath {
   '/usuarios': typeof PanelUsuariosRoute
   '/clientes/$id': typeof PanelClientesIdRoute
   '/inventario/$sku': typeof PanelInventarioSkuRoute
+  '/inventario/valor': typeof PanelInventarioValorRoute
   '/proyectos/$id': typeof PanelProyectosIdRoute
   '/clientes/': typeof PanelClientesIndexRoute
   '/inventario/': typeof PanelInventarioIndexRoute
@@ -103,6 +110,7 @@ export interface FileRoutesByTo {
   '/': typeof PanelIndexRoute
   '/clientes/$id': typeof PanelClientesIdRoute
   '/inventario/$sku': typeof PanelInventarioSkuRoute
+  '/inventario/valor': typeof PanelInventarioValorRoute
   '/proyectos/$id': typeof PanelProyectosIdRoute
   '/clientes': typeof PanelClientesIndexRoute
   '/inventario': typeof PanelInventarioIndexRoute
@@ -118,6 +126,7 @@ export interface FileRoutesById {
   '/_panel/': typeof PanelIndexRoute
   '/_panel/clientes/$id': typeof PanelClientesIdRoute
   '/_panel/inventario/$sku': typeof PanelInventarioSkuRoute
+  '/_panel/inventario/valor': typeof PanelInventarioValorRoute
   '/_panel/proyectos/$id': typeof PanelProyectosIdRoute
   '/_panel/clientes/': typeof PanelClientesIndexRoute
   '/_panel/inventario/': typeof PanelInventarioIndexRoute
@@ -133,6 +142,7 @@ export interface FileRouteTypes {
     | '/usuarios'
     | '/clientes/$id'
     | '/inventario/$sku'
+    | '/inventario/valor'
     | '/proyectos/$id'
     | '/clientes/'
     | '/inventario/'
@@ -146,6 +156,7 @@ export interface FileRouteTypes {
     | '/'
     | '/clientes/$id'
     | '/inventario/$sku'
+    | '/inventario/valor'
     | '/proyectos/$id'
     | '/clientes'
     | '/inventario'
@@ -160,6 +171,7 @@ export interface FileRouteTypes {
     | '/_panel/'
     | '/_panel/clientes/$id'
     | '/_panel/inventario/$sku'
+    | '/_panel/inventario/valor'
     | '/_panel/proyectos/$id'
     | '/_panel/clientes/'
     | '/_panel/inventario/'
@@ -243,6 +255,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PanelInventarioSkuRouteImport
       parentRoute: typeof PanelRouteRoute
     }
+    '/_panel/inventario/valor': {
+      id: '/_panel/inventario/valor'
+      path: '/inventario/valor'
+      fullPath: '/inventario/valor'
+      preLoaderRoute: typeof PanelInventarioValorRouteImport
+      parentRoute: typeof PanelRouteRoute
+    }
     '/_panel/proyectos/': {
       id: '/_panel/proyectos/'
       path: '/proyectos'
@@ -267,6 +286,7 @@ interface PanelRouteRouteChildren {
   PanelIndexRoute: typeof PanelIndexRoute
   PanelClientesIdRoute: typeof PanelClientesIdRoute
   PanelInventarioSkuRoute: typeof PanelInventarioSkuRoute
+  PanelInventarioValorRoute: typeof PanelInventarioValorRoute
   PanelProyectosIdRoute: typeof PanelProyectosIdRoute
   PanelClientesIndexRoute: typeof PanelClientesIndexRoute
   PanelInventarioIndexRoute: typeof PanelInventarioIndexRoute
@@ -280,6 +300,7 @@ const PanelRouteRouteChildren: PanelRouteRouteChildren = {
   PanelIndexRoute: PanelIndexRoute,
   PanelClientesIdRoute: PanelClientesIdRoute,
   PanelInventarioSkuRoute: PanelInventarioSkuRoute,
+  PanelInventarioValorRoute: PanelInventarioValorRoute,
   PanelProyectosIdRoute: PanelProyectosIdRoute,
   PanelClientesIndexRoute: PanelClientesIndexRoute,
   PanelInventarioIndexRoute: PanelInventarioIndexRoute,

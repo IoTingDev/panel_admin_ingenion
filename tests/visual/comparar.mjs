@@ -52,3 +52,10 @@ for (const r of filas)
   console.log(`${r.estado === "idéntica" ? "=" : "≠"} ${r.f.padEnd(44)} ${r.estado}`);
 const distintas = filas.filter((r) => r.estado !== "idéntica").length;
 console.log(`\n=== ${comparadas} comparadas de ${base.length}, ${distintas} con diferencias ===`);
+
+// Capturas nuevas (rutas añadidas por la fase) que aún no tienen línea base.
+const nuevas = fs
+  .readdirSync(path.join(dir, ACTUAL))
+  .filter((f) => f.endsWith(".png") && !base.includes(f));
+for (const f of nuevas) console.log(`+ ${f.padEnd(44)} NUEVA (sin línea base)`);
+if (nuevas.length) console.log(`=== ${nuevas.length} capturas nuevas ===`);

@@ -3,7 +3,8 @@ export type RolUsuario = "administrador" | "operador" | "lectura";
 export type EstadoProyecto = "borrador" | "activo" | "pausado" | "finalizado" | "baja";
 export type EstadoItem = "Disponible" | "En uso" | "En reparación" | "Dañado" | "Baja";
 export type TipoMovimiento = "Entrada" | "Salida";
-export type GrupoInventario = "componentes" | "herramientas" | "equipos";
+export type GrupoInventario = "componentes" | "herramientas" | "equipos" | "seguridad";
+export type DestinoTipo = "proyecto" | "trabajo";
 
 export interface Cliente {
   id: string;
@@ -54,6 +55,8 @@ export interface Auditoria {
 
 export interface ItemInventario {
   sku: string;
+  /** Explícito: el prefijo del SKU solo sirve para numerar. */
+  grupo: GrupoInventario;
   categoria: string;
   subcategoria: string;
   descripcion: string;
@@ -64,6 +67,15 @@ export interface ItemInventario {
   ubicacion: string;
   stock_minimo: number | null;
   notas: string;
+  /** Año de compra (1990..año actual). Opcional. */
+  anioCompra?: number | null | undefined;
+  /** Costo vigente por unidad, COP entero ≥ 0 (promedio ponderado de las compras). null = «Sin valor». */
+  valorUnitario?: number | null | undefined;
+  /** Costo declarado para la cantidad inicial; base de «invertido». */
+  costoInicial?: number | null | undefined;
+  /** Vida útil en años; si falta se usa la del grupo (Configuración). */
+  vidaUtilAnios?: number | null | undefined;
+  proveedor?: string | undefined;
 }
 
 export interface MovimientoInventario {
@@ -72,14 +84,48 @@ export interface MovimientoInventario {
   sku: string;
   tipo: TipoMovimiento;
   cantidad: number;
+  /** Texto libre heredado de la v1 (nombre del proyecto). El destino real va en destinoTipo/destinoId. */
   proyecto?: string | undefined;
   nota?: string | undefined;
+  /** Costo unitario de la compra (solo entradas), COP entero ≥ 0. */
+  costoUnitario?: number | undefined;
+  destinoTipo?: DestinoTipo | undefined;
+  destinoId?: string | undefined;
 }
 
 export interface InventarioExport {
   componentes: ItemInventario[];
   herramientas: ItemInventario[];
   equipos: ItemInventario[];
+  seguridad: ItemInventario[];
+}
+
+export interface ParametrosDepreciacion {
+  /** Años de vida útil por grupo; null = sin depreciación. */
+  aniosPorGrupo: Record<GrupoInventario, number | null>;
+  /** Porcentaje del valor que se conserva como mínimo (0..100). */
+  residualPct: number;
+}
+
+export interface ConfigInventario {
+  categorias: Record<GrupoInventario, string[]>;
+  /** Prefijo de SKU por categoría. */
+  prefijos: Record<string, string>;
+  depreciacion: ParametrosDepreciacion;
+}
+
+export interface Configuracion {
+  inventario: ConfigInventario;
+}
+
+/** Una fila de la plantilla de valores (CSV). valor/año nulos = «no cambiar». */
+export interface FilaValores {
+  sku: string;
+  grupo: GrupoInventario;
+  categoria: string;
+  cantidad_inicial: number;
+  anioCompra: number | null;
+  valorUnitario: number | null;
 }
 
 export interface Operador {
@@ -139,7 +185,11 @@ export interface NuevoMovimiento {
   cantidad: number;
   proyecto?: string | undefined;
   nota?: string | undefined;
+  /** ISO o AAAA-MM-DD. Por defecto hoy; se permite el pasado, no el futuro. */
   fecha?: string | undefined;
+  costoUnitario?: number | undefined;
+  destinoTipo?: DestinoTipo | undefined;
+  destinoId?: string | undefined;
 }
 
 export interface InventarioApi {
@@ -154,6 +204,8 @@ export interface InventarioApi {
   registrarMovimiento(data: NuevoMovimiento): Promise<MovimientoInventario>;
   /** Todo o nada: valida el lote completo (stock acumulado) antes de aplicar. */
   importarMovimientos(data: NuevoMovimiento[]): Promise<number>;
+  /** Todo o nada: valida el lote completo, reclasifica si grupo/categoría difieren y audita. */
+  importarValores(data: FilaValores[]): Promise<{ aplicadas: number }>;
   exportar(): Promise<InventarioExport>;
 }
 
@@ -169,7 +221,13 @@ export interface AuthApi {
   role(): Promise<Operador["rol"] | null>;
 }
 
+export interface ConfiguracionApi {
+  get(): Promise<Configuracion>;
+  actualizarInventario(cfg: ConfigInventario): Promise<Configuracion>;
+}
+
 export interface Api {
+  configuracion: ConfiguracionApi;
   clientes: ClientesApi;
   usuarios: UsuariosApi;
   proyectos: ProyectosApi;

@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { PageHeader, EmptyState, Panel } from "./common";
 import { DataFrame, SearchInput, FilterSelect, usePagination, Loading } from "./data-tools";
 import { useUi } from "./ui-context";
+import { ConfigInventarioPanel } from "./config-inventario-panel";
 
 export function AuditoriaView() {
   const { data = [], isLoading } = useAuditoria();
@@ -163,7 +164,7 @@ export function ConfiguracionView() {
         title="Configuración"
         subtitle="Preferencias del operador y conexión de datos."
       />
-      <div className="grid max-w-4xl gap-6">
+      <div className="grid max-w-4xl grid-cols-1 gap-6">
         <Panel title="Perfil del operador" className="rounded-xl border p-5">
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
@@ -203,6 +204,7 @@ export function ConfiguracionView() {
             </Button>
           </div>
         </Panel>
+        <ConfigInventarioPanel />
         <Panel title="Conexión" className="rounded-xl border p-5">
           <p className="mb-4 text-sm text-muted-foreground">
             Solo informativo. El modo se cambia con la variable VITE_API_MODE.

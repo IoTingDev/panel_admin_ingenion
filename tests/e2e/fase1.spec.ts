@@ -67,10 +67,10 @@ test("el logo no depende de Lovable: ninguna petición a /__l5e/ y sin recursos 
 test("notificaciones: se derivan de los datos reales, no son texto fijo", async ({ page }) => {
   await entrar(page);
   await page.goto("/");
-  await page.waitForFunction(() => !!localStorage.getItem("ioting.mock.db.v1"));
+  await page.waitForFunction(() => !!localStorage.getItem("ioting.mock.db.v2"));
   // Valores reales desde la base, no desde lo que diga la interfaz.
   const real = await page.evaluate(() => {
-    const db = JSON.parse(localStorage.getItem("ioting.mock.db.v1") ?? "{}");
+    const db = JSON.parse(localStorage.getItem("ioting.mock.db.v2") ?? "{}");
     return {
       pausados: db.proyectos.filter((p: { estado: string }) => p.estado === "pausado").length,
       suspendidos: db.clientes.filter((c: { estado: string }) => c.estado === "suspendido").length,
@@ -91,10 +91,10 @@ test("notificaciones: se derivan de los datos reales, no son texto fijo", async 
   await expect.poll(leer).toEqual(real);
   // Y cambia cuando cambian los datos: se suspende un cliente activo más.
   await page.evaluate(() => {
-    const db = JSON.parse(localStorage.getItem("ioting.mock.db.v1") ?? "{}");
+    const db = JSON.parse(localStorage.getItem("ioting.mock.db.v2") ?? "{}");
     const c = db.clientes.find((x: { estado: string }) => x.estado === "activo");
     c.estado = "suspendido";
-    localStorage.setItem("ioting.mock.db.v1", JSON.stringify(db));
+    localStorage.setItem("ioting.mock.db.v2", JSON.stringify(db));
   });
   await page.reload();
   await page.getByRole("button", { name: "Notificaciones" }).click();

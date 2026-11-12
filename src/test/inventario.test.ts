@@ -9,6 +9,7 @@ const item = (
   stock_minimo: number | null = null,
 ): ItemInventario => ({
   sku,
+  grupo: "componentes",
   categoria: "Instrumentación",
   subcategoria: "Nivel",
   descripcion: sku,

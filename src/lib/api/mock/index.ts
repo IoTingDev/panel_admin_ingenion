@@ -1,15 +1,23 @@
 import {
+  errorCamposItem,
+  errorCamposMovimiento,
   inicializarSecuencias,
+  normalizarFecha,
   reservarSku,
   stockMap,
   validarLote,
   validarSalida,
 } from "@/lib/inventario";
+import { grupoDeCategoria, validarConfigInventario } from "@/lib/config-inventario";
+import { previsualizarValores, promedioPonderado, tieneCompras } from "@/lib/valoracion";
 import { uid } from "@/lib/format";
-import type { Api, Auditoria, Cliente, NuevoMovimiento, Operador } from "../types";
+import type { Api, Auditoria, Cliente, ItemInventario, NuevoMovimiento, Operador } from "../types";
+import { migrarV1aV2 } from "./migracion";
 import { ACTOR, buildSeed, type MockDb } from "./seed";
 
-const DB_KEY = "ioting.mock.db.v1";
+const DB_KEY = "ioting.mock.db.v2";
+/** La v1 se conserva intacta como respaldo tras migrar. */
+const DB_KEY_V1 = "ioting.mock.db.v1";
 const SESSION_KEY = "ioting.mock.session.v1";
 const delay = (ms = 120) => new Promise((r) => setTimeout(r, ms));
 
@@ -21,9 +29,18 @@ function db(): MockDb {
     if (raw) {
       try {
         const guardada = JSON.parse(raw) as MockDb;
-        // Bases guardadas antes de existir el contador: se siembra con ítems y movimientos.
         guardada.secuencias ??= inicializarSecuencias(guardada.items, guardada.movimientos);
         cache = guardada;
+        return cache;
+      } catch {
+        /* reseed */
+      }
+    }
+    const v1 = window.localStorage.getItem(DB_KEY_V1);
+    if (v1) {
+      try {
+        cache = migrarV1aV2(JSON.parse(v1) as Record<string, unknown>);
+        persist();
         return cache;
       } catch {
         /* reseed */
@@ -76,7 +93,14 @@ export function resetMockDb() {
   persist();
 }
 
-/** Aplica un movimiento ya validado o lo valida si va suelto. No persiste. */
+const existeDestino = (tipo: "proyecto" | "trabajo", id: string) => {
+  const d = db() as MockDb & { trabajos?: { id: string }[] };
+  return tipo === "proyecto"
+    ? d.proyectos.some((p) => p.id === id)
+    : (d.trabajos ?? []).some((t) => t.id === id);
+};
+
+/** Valida y aplica un movimiento. No persiste (lo hace quien llama). */
 function aplicarMovimiento(data: NuevoMovimiento) {
   const d = db();
   const item = must(
@@ -85,25 +109,47 @@ function aplicarMovimiento(data: NuevoMovimiento) {
   );
   if (!Number.isInteger(data.cantidad) || data.cantidad <= 0)
     throw new Error("La cantidad debe ser un entero mayor que 0.");
+  const errCampos = errorCamposMovimiento(data, existeDestino);
+  if (errCampos) throw new Error(errCampos);
+  const stock = stockMap([item], d.movimientos).get(item.sku) ?? 0;
   if (data.tipo === "Salida") {
-    const err = validarSalida(stockMap([item], d.movimientos).get(item.sku) ?? 0, data.cantidad);
+    const err = validarSalida(stock, data.cantidad);
     if (err) throw new Error(err);
   }
+  const fecha = normalizarFecha(data.fecha).iso;
+  const proyecto =
+    data.destinoTipo === "proyecto"
+      ? d.proyectos.find((p) => p.id === data.destinoId)?.nombre
+      : data.proyecto;
   const m = {
     id: uid(),
-    fecha: data.fecha ?? new Date().toISOString(),
+    fecha,
     sku: data.sku,
     tipo: data.tipo,
     cantidad: data.cantidad,
-    proyecto: data.proyecto || undefined,
+    proyecto: proyecto || undefined,
     nota: data.nota || undefined,
+    costoUnitario: data.costoUnitario,
+    destinoTipo: data.destinoTipo,
+    destinoId: data.destinoId,
   };
   d.movimientos.push(m);
+  let detalleValor = "";
+  if (data.tipo === "Entrada" && data.costoUnitario !== undefined) {
+    const antes = item.valorUnitario ?? null;
+    item.valorUnitario = promedioPonderado(
+      stock,
+      item.valorUnitario,
+      data.cantidad,
+      data.costoUnitario,
+    );
+    detalleValor = ` · costo ${data.costoUnitario}, valor ${antes ?? "—"} → ${item.valorUnitario}`;
+  }
   audit({
     accion: "inventario.movimiento",
     entidad: "inventario",
     entidadId: m.sku,
-    detalle: `${m.tipo} de ${m.cantidad} ${item.unidad}${m.proyecto ? ` · ${m.proyecto}` : ""}${m.nota ? ` · ${m.nota}` : ""}`,
+    detalle: `${m.tipo} de ${m.cantidad} ${item.unidad}${m.proyecto ? ` · ${m.proyecto}` : ""}${m.nota ? ` · ${m.nota}` : ""}${detalleValor}`,
   });
   return m;
 }
@@ -410,7 +456,17 @@ export const mockApi: Api = {
     async createItem(data) {
       await delay();
       const d = db();
-      const item = { ...data, sku: reservarSku(data.categoria, d.secuencias) };
+      const cfg = d.config.inventario;
+      const grupo = data.grupo ?? grupoDeCategoria(cfg, data.categoria);
+      if (!grupo) throw new Error(`La categoría «${data.categoria}» no existe.`);
+      const err = errorCamposItem({ ...data, grupo }, undefined, cfg);
+      if (err) throw new Error(err);
+      const item: ItemInventario = {
+        ...data,
+        grupo,
+        sku: reservarSku(data.categoria, d.secuencias, cfg.prefijos),
+        costoInicial: data.valorUnitario ?? null,
+      };
       d.items.push(item);
       audit({
         accion: "inventario.crear",
@@ -423,17 +479,33 @@ export const mockApi: Api = {
     },
     async updateItem(sku, data) {
       await delay(60);
+      const d = db();
       const i = must(
-        db().items.find((x) => x.sku === sku),
+        d.items.find((x) => x.sku === sku),
         "Ítem no encontrado",
       );
       if (data.estado === "Baja" && i.estado !== "Baja")
         throw new Error("La baja exige un motivo: use «Dar de baja».");
+      const err = errorCamposItem(data, i, d.config.inventario);
+      if (err) throw new Error(err);
+      if (data.cantidad_inicial !== undefined) {
+        const nuevoStock =
+          (stockMap([i], d.movimientos).get(sku) ?? 0) - i.cantidad_inicial + data.cantidad_inicial;
+        if (nuevoStock < 0)
+          throw new Error(
+            `Esa cantidad inicial dejaría el stock negativo (${nuevoStock}): ya se consumieron más unidades.`,
+          );
+      }
       const cambios = Object.entries(data).map(
         ([k, v]) =>
           `${k}: ${String((i as unknown as Record<string, unknown>)[k] ?? "—")} → ${String(v ?? "—")}`,
       );
+      const cambiaValor =
+        data.valorUnitario !== undefined && data.valorUnitario !== i.valorUnitario;
       Object.assign(i, data);
+      // Mientras no haya compras costeadas, el valor editado es también el costo de lo inicial.
+      if (cambiaValor && !tieneCompras(sku, d.movimientos))
+        i.costoInicial = data.valorUnitario ?? null;
       audit({
         accion: "inventario.editar",
         entidad: "inventario",
@@ -487,10 +559,18 @@ export const mockApi: Api = {
     async importarMovimientos(rows: NuevoMovimiento[]) {
       await delay();
       const d = db();
-      const errores = validarLote(d.items, d.movimientos, rows);
-      if (errores.length > 0)
+      const errores = new Map<number, string>();
+      validarLote(d.items, d.movimientos, rows).forEach((e) => errores.set(e.fila, e.error));
+      rows.forEach((r, i) => {
+        const e = errorCamposMovimiento(r, existeDestino);
+        if (e && !errores.has(i + 1)) errores.set(i + 1, e);
+      });
+      if (errores.size > 0)
         throw new Error(
-          `Importación rechazada, no se aplicó nada. ${errores.map((e) => `Fila ${e.fila}: ${e.error}`).join(" · ")}`,
+          `Importación rechazada, no se aplicó nada. ${[...errores.entries()]
+            .sort((a, b) => a[0] - b[0])
+            .map(([fila, e]) => `Fila ${fila}: ${e}`)
+            .join(" · ")}`,
         );
       rows.forEach((r) => aplicarMovimiento(r));
       audit({
@@ -502,14 +582,75 @@ export const mockApi: Api = {
       persist();
       return rows.length;
     },
+    async importarValores(filas) {
+      await delay();
+      const d = db();
+      const prev = previsualizarValores(d.items, d.movimientos, filas, d.config.inventario);
+      const malas = prev.filter((p) => p.error);
+      if (malas.length > 0)
+        throw new Error(
+          `Importación rechazada, no se aplicó nada. ${malas.map((p) => `Fila ${p.fila}: ${p.error}`).join(" · ")}`,
+        );
+      const resumen: string[] = [];
+      for (const p of prev) {
+        const it = must(
+          d.items.find((x) => x.sku === p.sku),
+          "Ítem no encontrado",
+        );
+        if (p.cambios.length === 0) continue;
+        const valorCambia = p.cambios.some((c) => c.campo === "valorUnitario");
+        for (const c of p.cambios) (it as unknown as Record<string, unknown>)[c.campo] = c.despues;
+        if (valorCambia && !tieneCompras(it.sku, d.movimientos))
+          it.costoInicial = it.valorUnitario ?? null;
+        resumen.push(
+          `${p.sku}: ${p.cambios.map((c) => `${c.campo} ${String(c.antes ?? "—")} → ${String(c.despues)}`).join(", ")}`,
+        );
+      }
+      audit({
+        accion: "inventario.importar_valores",
+        entidad: "inventario",
+        entidadId: "csv",
+        detalle: `${filas.length} filas, ${resumen.length} con cambios. ${resumen.join(" | ")}`,
+      });
+      persist();
+      return { aplicadas: filas.length };
+    },
     async exportar() {
       const items = clone(db().items);
-      const g = (pfx: string[]) => items.filter((i) => pfx.includes(i.sku.slice(0, 3)));
+      const g = (grupo: ItemInventario["grupo"]) => items.filter((i) => i.grupo === grupo);
       return {
-        componentes: g(["SEN", "POT", "COM", "DSP", "SBC", "MCU"]),
-        herramientas: g(["HER", "CAB", "MAN"]),
-        equipos: g(["EQP"]),
+        componentes: g("componentes"),
+        herramientas: g("herramientas"),
+        equipos: g("equipos"),
+        seguridad: g("seguridad"),
       };
+    },
+  },
+
+  configuracion: {
+    async get() {
+      await delay(40);
+      return clone(db().config);
+    },
+    async actualizarInventario(cfg) {
+      await delay();
+      const d = db();
+      const err = validarConfigInventario(cfg);
+      if (err) throw new Error(err);
+      const enUso = d.items.find((i) => !cfg.categorias[i.grupo]?.includes(i.categoria));
+      if (enUso)
+        throw new Error(
+          `No se puede quitar la categoría «${enUso.categoria}»: la usa ${enUso.sku} (${enUso.grupo}).`,
+        );
+      d.config.inventario = clone(cfg);
+      audit({
+        accion: "configuracion.inventario",
+        entidad: "configuracion",
+        entidadId: "inventario",
+        detalle: "Categorías, prefijos o parámetros de depreciación actualizados",
+      });
+      persist();
+      return clone(d.config);
     },
   },
 };
