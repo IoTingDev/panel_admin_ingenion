@@ -47,11 +47,18 @@ No se rellena con suposiciones.
      TCO y mantener el panel como herramienta interna acotada, o (b) reemplazarlo por una
      herramienta comprada e integrar. Mientras no se decida, el panel es **herramienta interna del
      dueño, no un dominio de la plataforma** y no debe crecer más allá de este contrato.
-2. **Autenticación del personal.** El encargo habla de «el pool de Cognito de staff». **No hay
-   ningún documento en el monorepo que defina un pool de staff.** Lo que sí está documentado
-   (ADR-0030 §4.5quater) es el pool de plataforma `us-east-1_nJCWtej6i` con _app clients_
-   separados por tipo de principal. **DECISIÓN PENDIENTE:** pool propio de staff o un _app
-   client_ nuevo en el existente; y cómo se mapea el rol `Administrador` del panel.
+2. **Autenticación del personal. Corregido tras la Fase 1 de conexión (verificado contra el
+   monorepo; la verificación en AWS en vivo queda pendiente).** El operador del panel es de la
+   población **corporativa** (004 §5.1, DAW-17; 008 §6.1, DS-06): IAM Identity Center, doble
+   factor, acceso temporal por rol. **Un operador jamás usa una identidad de plataforma.** Por
+   eso el «pool de Cognito de staff» que asumía la versión anterior **sobra y contradice DS-06**.
+   En el código solo existe un pool de Cognito (`iotingdev-dev-identidad`, población de
+   plataforma, MFA obligatorio) con dos _app clients_ (sonda y humanos de Bahía): **no hay pool
+   de staff**. La única mención de la consola de operación es un comentario de
+   `infra/portal-clientes/portal.tf`: `admin.iotingdev.com` «sobre IAM Identity Center».
+   **SIN FUNDAMENTO DOCUMENTAL:** cómo una aplicación web consume una identidad de Identity Center
+   (OIDC o SAML) y cómo se valida en la API (el autorizador actual es JWT de Cognito). **Requiere
+   ADR nuevo** (Fase 2).
 3. **Alegra.** Se cita en el encargo como sistema contable y de facturación. **No aparece
    nombrado en `docs/` ni en `docs/adr/`**; la clasificación CB-16 (contabilidad y facturación se
    compran) es la que lo respalda. La integración (§9) es una **propuesta**, no un hecho.
@@ -193,10 +200,10 @@ Todas son asíncronas. «Audita» = escribe un evento (§7). Los errores se desc
 
 ### 3.1 `AuthApi`
 
-| Operación                             | Comportamiento                                                                                              |
-| ------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `login(email, password)`              | Devuelve `Operador`. Mock: acepta cualquier contraseña de 4+ caracteres. **Se sustituye por Cognito** (§9). |
-| `logout()`, `currentUser()`, `role()` | Sesión actual.                                                                                              |
+| Operación                             | Comportamiento                                                                                                                                                         |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `login(email, password)`              | Devuelve `Operador`. Mock: acepta cualquier contraseña de 4+ caracteres. **Se sustituye por la vía corporativa (Identity Center), no por Cognito** (§1 punto 2, §9.1). |
+| `logout()`, `currentUser()`, `role()` | Sesión actual.                                                                                                                                                         |
 
 ### 3.2 `ClientesApi`
 
@@ -408,22 +415,33 @@ pruebas los verifican):
 
 Esta sección **propone** el encaje; lo marcado como pendiente está en §1.
 
-1. **Autenticación del personal (sustituye `AuthApi` mock).** Cognito, con el modelo ya
-   documentado en ADR-0030: un _app client_ por tipo de principal, validación del token en el
-   servidor y rol derivado del grupo. **Pendiente:** pool de staff propio o _app client_ nuevo en
-   el pool de plataforma (§1, punto 2).
+1. **Autenticación del personal (sustituye `AuthApi` mock).** Por la **vía corporativa**
+   (IAM Identity Center, DAW-17 y DS-06), no por Cognito. El mecanismo concreto de la aplicación
+   web contra Identity Center **no tiene fundamento documental** y es una decisión de diseño con
+   ADR (§1 punto 2). `Operador.rol = "Administrador"` se deriva de la asignación de conjunto de
+   permisos del operador, no de un grupo de Cognito.
 2. **Zero Trust (ADR-0014).** El panel no es una excepción: cada operación se autentica, autoriza
    y registra; ninguna llamada se confía por su origen.
-3. **Suscripción como identificador común (ADR-0004 §6, ADR-0003).** El `Cliente` del panel debe
-   enlazar con la **Suscripción/tenant** de la plataforma mediante su identificador, no por
-   nombre. Hoy el panel no tiene ese campo: **se añade como `suscripcionId` opcional** cuando el
-   cliente exista en la plataforma, y la plataforma sigue siendo la fuente del estado real del
-   servicio (CB-05: «el registro comercial se compra; el estado real del servicio proviene de la
-   plataforma»).
-4. **Aislamiento (ADR-0018).** Todo registro de cliente (`Cliente`, `Usuario`, `Proyecto`,
-   `Trabajo`) debe quedar **acotado a su cliente propietario** en cada consulta; el panel de
-   staff accede con una vía de acceso privilegiado **auditada** (ADR-0017), no con un acceso
-   permanente a datos de cliente.
+3. **El panel conserva su propio registro de cliente, con enlace opcional a la plataforma.**
+   El panel **no depende de D-02 para arrancar**. Verificado en el monorepo: D-02 (tenencia) expone
+   hoy solo `alta_cliente`, `alta_vinculo` y `revocar_vinculo`, por invocación directa de la
+   Lambda (sin ruta HTTP); **no existe baja ni suspensión de cliente**; el módulo de suscripción
+   (`contratar`, `cambiarDePlan`, `terminar`) es librería sin función desplegada. Los estados del
+   Cliente de D-02 (`cliente`, `en_implantacion`, `en_operacion`, `en_renovacion`,
+   `en_expansion`, `suspendido`, `retirado`) **no coinciden** con los del panel (`activo`,
+   `suspendido`, `baja`) y D-02 no guarda dirección, tipo ni contacto. Por eso el `Cliente` del
+   panel es un registro comercial propio. Cuando el cliente exista en la plataforma se enlaza con
+   un identificador opcional (`clienteIdPlataforma`, el id de D-02; `suscripcionId` para el
+   estado del servicio), **nunca por nombre**, y la plataforma sigue siendo la fuente del estado
+   real del servicio (CB-05). El panel **no copia** estados de la plataforma como verdad propia.
+4. **Aislamiento (ADR-0018) y acceso del operador (ADR-0017).** Todo registro de cliente debe
+   quedar **acotado a su cliente propietario** en cada consulta. El régimen de acceso del operador
+   a datos de cliente (DS-11: efímero, justificado, de alcance mínimo, auditable, notificable) está
+   **«Propuesto» y sin implementación encontrada** en el monorepo: el panel **no puede dar por
+   hecho** ese acceso. Los datos de personas que el panel muestra (correo, teléfono, dirección de
+   sitios) son los que caen bajo ese régimen. **Orden de conexión:** primero lo **interno**
+   (inventario, proyectos, trabajos, valoración, configuración), que son datos de la empresa y no
+   de un cliente de la plataforma; después los datos de personas de clientes.
 5. **Alegra (propuesta; ver §1, punto 3).**
    - **No duplicar contabilidad.** El panel no emite facturas ni lleva libros. `valorPactado` es
      informativo.
@@ -435,8 +453,12 @@ Esta sección **propone** el encaje; lo marcado como pendiente está en §1.
      lleva Alegra. Sugerido: `activoFijoId` opcional en el ítem.
    - **Compras:** una entrada con `costoUnitario` puede enlazar a una compra de Alegra
      (`compraId`), de modo que el costo del panel provenga de ella y no se teclee dos veces.
-6. **Sensibilidad (ADR-0015).** Pendiente asignar S0–S3 por campo (§1, punto 4). Mientras tanto,
-   tratar correo, teléfono y dirección como mínimo sensibles.
+6. **Sensibilidad (ADR-0015).** Regla vigente (008 §7.2): el dato personal es S3 de forma
+   automática (DD-22) y lo no clasificado se trata como S3. **Propuesta de la Fase 1, pendiente de
+   aprobación de Juan:** correo, teléfono y nombre de contacto → S3; dirección de un cliente
+   persona → S3; dirección y datos comerciales de un cliente empresa → S2; inventario, valoración,
+   proyectos, trabajos y configuración (datos de la empresa) → S1. Hasta que Juan la apruebe, nada
+   de esto está asignado.
 7. **Atribución de costo por cliente (DAW-22).** El panel no debe introducir un servidor de
    dominio de larga vida compartido: si se construye, función discreta con identidad de alcance
    mínimo, como el resto del núcleo (ADR-0024).
