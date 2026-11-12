@@ -4,6 +4,8 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { api, type Proyecto } from "@/lib/api";
 import { useApiMutation, useClientes } from "@/hooks/use-api";
+import { COLUMNAS_PROYECTO, ROTULO_ESTADO_PROYECTO } from "@/lib/dominio";
+import { hoyBogota } from "@/lib/inventario";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,7 +23,7 @@ const proyectoSchema = z
     nombre: z.string().min(3, "Mínimo 3 caracteres"),
     clienteId: z.string().min(1, "Seleccione cliente"),
     descripcion: z.string(),
-    estado: z.enum(["borrador", "activo", "pausado", "finalizado", "baja"]),
+    estado: z.enum(["en_desarrollo", "activo", "pausado", "finalizado", "baja"]),
     fechaInicio: z.string(),
     fechaFin: z.string(),
     responsable: z.string(),
@@ -50,8 +52,9 @@ export function ProyectoSheet({
       nombre: proyecto?.nombre ?? "",
       clienteId: proyecto?.clienteId ?? clienteId,
       descripcion: proyecto?.descripcion ?? "",
-      estado: proyecto?.estado ?? "borrador",
-      fechaInicio: proyecto?.fechaInicio?.slice(0, 10) ?? "",
+      estado: proyecto?.estado ?? "en_desarrollo",
+      // La fecha real de inicio: por defecto hoy, editable y puede ser pasada.
+      fechaInicio: proyecto ? (proyecto.fechaInicio?.slice(0, 10) ?? "") : hoyBogota(),
       fechaFin: proyecto?.fechaFin?.slice(0, 10) ?? "",
       responsable: proyecto?.responsable ?? "",
       etiquetas: proyecto?.etiquetas?.join(", ") ?? "",
@@ -110,8 +113,10 @@ export function ProyectoSheet({
           </div>
           <Label htmlFor="p-estado">Estado</Label>
           <select id="p-estado" className="app-select w-full" {...form.register("estado")}>
-            {["borrador", "activo", "pausado", "finalizado"].map((s) => (
-              <option key={s}>{s}</option>
+            {COLUMNAS_PROYECTO.map((s) => (
+              <option key={s} value={s}>
+                {ROTULO_ESTADO_PROYECTO[s]}
+              </option>
             ))}
           </select>
           <Label htmlFor="p-resp">Responsable</Label>

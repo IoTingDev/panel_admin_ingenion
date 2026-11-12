@@ -12,6 +12,7 @@ import { PageHeader, EmptyState, Panel } from "./common";
 import { DataFrame, SearchInput, FilterSelect, usePagination, Loading } from "./data-tools";
 import { useUi } from "./ui-context";
 import { ConfigInventarioPanel } from "./config-inventario-panel";
+import { RespaldoPanel, SectoresPanel } from "./config-datos-panel";
 
 export function AuditoriaView() {
   const { data = [], isLoading } = useAuditoria();
@@ -204,7 +205,9 @@ export function ConfiguracionView() {
             </Button>
           </div>
         </Panel>
+        <SectoresPanel />
         <ConfigInventarioPanel />
+        <RespaldoPanel />
         <Panel title="Conexión" className="rounded-xl border p-5">
           <p className="mb-4 text-sm text-muted-foreground">
             Solo informativo. El modo se cambia con la variable VITE_API_MODE.

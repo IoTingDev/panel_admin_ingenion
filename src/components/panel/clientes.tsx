@@ -19,6 +19,7 @@ import {
   useProyectos,
   useAuditoria,
   useApiMutation,
+  useConfiguracion,
 } from "@/hooks/use-api";
 import { fmtFecha, fmtFechaHora } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -37,11 +38,13 @@ import { ReactivarHijosDialog } from "./reactivar-hijos";
 import { ConfirmDialog, type ConfirmState } from "./confirm-dialog";
 import { UsuariosView } from "./usuarios";
 import { ProyectosView } from "./proyectos";
+import { TrabajosView } from "./trabajos";
 
 export function ClientesView({ nuevo = false }: { nuevo?: boolean }) {
   const { data: clientes = [], isLoading } = useClientes();
   const { data: usuarios = [] } = useUsuarios();
   const { data: proyectos = [] } = useProyectos();
+  const { data: config } = useConfiguracion();
   const [search, setSearch] = useState("");
   const [estado, setEstado] = useState("");
   const [sector, setSector] = useState("");
@@ -99,7 +102,7 @@ export function ClientesView({ nuevo = false }: { nuevo?: boolean }) {
           label="Todos los sectores"
           value={sector}
           onChange={setSector}
-          options={["cacao", "café", "mango", "otro"]}
+          options={config?.sectores ?? []}
         />
       </div>
       <DataFrame footer={pg.footer}>
@@ -185,6 +188,17 @@ export function ClienteDetail({ id }: { id: string }) {
   const [edit, setEdit] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
   const [hijos, setHijos] = useState<HijosReactivables | null>(null);
+  // El diálogo de hijos se abre cuando el de confirmación ya cerró (dos diálogos de Radix a la vez
+  // dejan el segundo oculto a la accesibilidad).
+  const [hijosPend, setHijosPend] = useState<HijosReactivables | null>(null);
+  useEffect(() => {
+    if (confirm || !hijosPend) return;
+    const t = setTimeout(() => {
+      setHijos(hijosPend);
+      setHijosPend(null);
+    }, 150);
+    return () => clearTimeout(t);
+  }, [confirm, hijosPend]);
   const mutation = useApiMutation(
     ({ estado, motivo }: { estado: Estado; motivo: string }) =>
       api.clientes.cambiarEstado(id, estado, motivo),
@@ -201,7 +215,7 @@ export function ClienteDetail({ id }: { id: string }) {
             : "Reactivar cliente",
       description:
         estado === "baja"
-          ? `Se darán de baja ${impact.usuarios} usuarios; ${impact.proyectos} proyectos pasarán a baja. Los datos históricos se conservarán.`
+          ? `Se darán de baja ${impact.usuarios} usuarios; ${impact.proyectos} proyectos pasarán a baja; ${impact.trabajos} trabajos abiertos se cancelarán. Los datos históricos se conservarán.`
           : "El estado del cliente cambiará. Esta acción queda registrada en auditoría.",
       confirmLabel: "Confirmar",
       destructive: estado === "baja",
@@ -209,7 +223,7 @@ export function ClienteDetail({ id }: { id: string }) {
         await mutation.mutateAsync({ estado, motivo });
         if (estado === "activo") {
           const h = await api.clientes.hijosReactivables(id);
-          if (h.usuarios.length + h.proyectos.length > 0) setHijos(h);
+          if (h.usuarios.length + h.proyectos.length + h.trabajos.length > 0) setHijosPend(h);
         }
       },
     });
@@ -261,6 +275,7 @@ export function ClienteDetail({ id }: { id: string }) {
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
           <TabsTrigger value="usuarios">Usuarios</TabsTrigger>
           <TabsTrigger value="proyectos">Proyectos</TabsTrigger>
+          <TabsTrigger value="trabajos">Trabajos técnicos</TabsTrigger>
           <TabsTrigger value="actividad">Actividad</TabsTrigger>
         </TabsList>
         <TabsContent value="resumen">
@@ -271,6 +286,14 @@ export function ClienteDetail({ id }: { id: string }) {
                 <div>
                   <dt className="text-xs text-muted-foreground">Sector</dt>
                   <dd className="mt-1 capitalize">{c.sector}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">Tipo de cliente</dt>
+                  <dd className="mt-1 capitalize">{c.tipoCliente ?? "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">Dirección</dt>
+                  <dd className="mt-1">{c.direccion || "—"}</dd>
                 </div>
                 <div>
                   <dt className="text-xs text-muted-foreground">Ciudad</dt>
@@ -309,11 +332,13 @@ export function ClienteDetail({ id }: { id: string }) {
         <TabsContent value="proyectos">
           <ProyectosView clienteId={id} />
         </TabsContent>
+        <TabsContent value="trabajos">
+          <TrabajosView clienteId={id} />
+        </TabsContent>
         <TabsContent value="actividad">
           <ActivityRows rows={auditoria.filter((a) => a.entidadId === id)} />
         </TabsContent>
       </Tabs>
-      <ReactivarHijosDialog clienteId={id} hijos={hijos} onClose={() => setHijos(null)} />
       <ReactivarHijosDialog clienteId={id} hijos={hijos} onClose={() => setHijos(null)} />
       <ClienteSheet open={edit} onClose={() => setEdit(false)} cliente={c} />
       <ConfirmDialog state={confirm} onClose={() => setConfirm(null)} />

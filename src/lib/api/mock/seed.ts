@@ -1,5 +1,7 @@
 import inventarioJson from "@/data/inventario_ioting.json";
 import { CONFIG_INVENTARIO_DEFECTO } from "@/lib/config-inventario";
+import { SECTORES_DEFECTO } from "@/lib/dominio";
+import { isoDia } from "@/lib/format";
 import { inicializarSecuencias, type Secuencias } from "@/lib/inventario";
 import type {
   Auditoria,
@@ -9,6 +11,7 @@ import type {
   ItemInventario,
   MovimientoInventario,
   Proyecto,
+  TrabajoTecnico,
   UsuarioCliente,
 } from "../types";
 
@@ -22,6 +25,7 @@ export interface MockDb {
   /** Contador por prefijo de SKU; nunca decrece (los SKU eliminados no se reutilizan). */
   secuencias: Secuencias;
   config: Configuracion;
+  trabajos: TrabajoTecnico[];
   /** Versión del esquema guardado (ver migracion.ts). */
   version: 2;
 }
@@ -210,7 +214,7 @@ export function buildSeed(): MockDb {
       id: p(6),
       clienteId: c(3),
       nombre: "Riego por goteo inteligente",
-      estado: "borrador",
+      estado: "en_desarrollo",
       responsable: "Santiago Mora",
       etiquetas: ["riego"],
     },
@@ -238,7 +242,7 @@ export function buildSeed(): MockDb {
       clienteId: c(6),
       nombre: "Visión artificial para selección de grano",
       descripcion: "Clasificación de granos con cámara y SBC.",
-      estado: "borrador",
+      estado: "en_desarrollo",
       responsable: "Juan Camilo Velásquez",
       etiquetas: ["visión", "SBC"],
     },
@@ -287,6 +291,8 @@ export function buildSeed(): MockDb {
       cantidad,
       proyecto: proyecto ? proyectos.find((x) => x.id === proyecto)?.nombre : undefined,
       ...(proyecto ? { destinoTipo: "proyecto" as const, destinoId: proyecto } : {}),
+      ...(tipo === "Salida" ? { costoAlSalir: null } : {}),
+      esDemo: true,
       nota: nota || undefined,
     }),
   );
@@ -347,6 +353,59 @@ export function buildSeed(): MockDb {
     );
   auditoria.sort((a, b) => b.fecha.localeCompare(a.fecha));
 
+  const dia = (d: number) => isoDia(new Date(Date.now() + d * 86_400_000).toISOString());
+  const t = (n: number) => id("t6000000", n);
+  const trabajos: TrabajoTecnico[] = [
+    {
+      id: t(1),
+      codigo: "TT-0001",
+      clienteId: c(1),
+      tipo: "cctv",
+      titulo: "Instalación de 4 cámaras en bodega de secado",
+      descripcion: "Cuatro cámaras IP con grabador y cableado estructurado.",
+      sitioDireccion: "Vereda El Carmen, finca La Esperanza",
+      ciudad: "Santa Marta",
+      responsable: "Santiago Mora",
+      estado: "completado",
+      fechaProgramada: dia(-20),
+      fechaInicio: dia(-19),
+      fechaFin: dia(-18),
+      valorPactado: 3_200_000,
+      registradoEn: diasAtras(25),
+    },
+    {
+      id: t(2),
+      codigo: "TT-0002",
+      clienteId: c(3),
+      tipo: "mantenimiento",
+      titulo: "Mantenimiento preventivo de alarma perimetral",
+      ciudad: "Bogotá",
+      responsable: "Daniela Torres",
+      estado: "en_curso",
+      fechaProgramada: dia(-2),
+      fechaInicio: dia(-1),
+      valorPactado: 850_000,
+      registradoEn: diasAtras(6),
+    },
+    {
+      id: t(3),
+      codigo: "TT-0003",
+      clienteId: c(5),
+      tipo: "telecom",
+      titulo: "Enlace inalámbrico entre planta y oficina",
+      descripcion: "Dos antenas punto a punto y ajuste de red.",
+      ciudad: "Medellín",
+      responsable: "Juan Camilo Velásquez",
+      estado: "programado",
+      fechaProgramada: dia(3),
+      valorPactado: 1_900_000,
+      registradoEn: diasAtras(2),
+    },
+  ];
+  // Todo lo sembrado es de demostración: «Limpiar datos de demostración» lo elimina.
+  for (const x of [...clientes, ...usuarios, ...proyectos, ...trabajos]) x.esDemo = true;
+  for (const p of proyectos) p.registradoEn = p.fechaInicio ?? diasAtras(60);
+
   return {
     clientes,
     usuarios,
@@ -354,8 +413,12 @@ export function buildSeed(): MockDb {
     auditoria,
     items,
     movimientos,
-    secuencias: inicializarSecuencias(items, movimientos),
-    config: { inventario: structuredClone(CONFIG_INVENTARIO_DEFECTO) },
+    trabajos,
+    secuencias: { ...inicializarSecuencias(items, movimientos), TT: trabajos.length },
+    config: {
+      inventario: structuredClone(CONFIG_INVENTARIO_DEFECTO),
+      sectores: [...SECTORES_DEFECTO],
+    },
     version: 2,
   };
 }

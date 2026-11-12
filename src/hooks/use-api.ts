@@ -6,6 +6,7 @@ export const qk = {
   clientes: ["clientes"] as const,
   usuarios: ["usuarios"] as const,
   proyectos: ["proyectos"] as const,
+  trabajos: ["trabajos"] as const,
   items: ["inventario", "items"] as const,
   movimientos: ["inventario", "movimientos"] as const,
   auditoria: ["auditoria"] as const,
@@ -19,6 +20,8 @@ export const useUsuarios = () =>
   useQuery({ queryKey: qk.usuarios, queryFn: () => api.usuarios.list() });
 export const useProyectos = () =>
   useQuery({ queryKey: qk.proyectos, queryFn: () => api.proyectos.list() });
+export const useTrabajos = () =>
+  useQuery({ queryKey: qk.trabajos, queryFn: () => api.trabajos.list() });
 export const useItems = () =>
   useQuery({ queryKey: qk.items, queryFn: () => api.inventario.listItems() });
 export const useMovimientos = () =>

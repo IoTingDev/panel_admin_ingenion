@@ -141,14 +141,19 @@ const ESTADO_TONE: Record<string, keyof typeof dotBg> = {
   dañado: "destructive",
   baja: "destructive",
   borrador: "muted",
+  en_desarrollo: "muted",
+  programado: "info",
+  en_curso: "warning",
+  completado: "success",
+  cancelado: "destructive",
 };
 
-export function StatusBadge({ estado }: { estado: string }) {
+export function StatusBadge({ estado, label }: { estado: string; label?: string }) {
   const tone = ESTADO_TONE[estado.toLowerCase()] ?? "muted";
   return (
     <span className={dotTone({ tone })}>
       <span className={cn("h-1.5 w-1.5 rounded-full", dotBg[tone])} />
-      {estado.charAt(0).toUpperCase() + estado.slice(1)}
+      {label ?? estado.charAt(0).toUpperCase() + estado.slice(1)}
     </span>
   );
 }

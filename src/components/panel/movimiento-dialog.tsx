@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { api } from "@/lib/api";
-import { useApiMutation, useItems, useMovimientos, useProyectos } from "@/hooks/use-api";
+import {
+  useApiMutation,
+  useItems,
+  useMovimientos,
+  useProyectos,
+  useTrabajos,
+} from "@/hooks/use-api";
 import { hoyBogota, stockActual, validarSalida } from "@/lib/inventario";
 import { useUi } from "./ui-context";
 import { Button } from "@/components/ui/button";
@@ -21,6 +27,7 @@ export function MovimientoDialog() {
   const { data: items = [] } = useItems();
   const { data: movs = [] } = useMovimientos();
   const { data: proyectos = [] } = useProyectos();
+  const { data: trabajos = [] } = useTrabajos();
   const [sku, setSku] = useState("");
   const [tipo, setTipo] = useState<"Entrada" | "Salida">("Salida");
   const [cantidad, setCantidad] = useState(1);
@@ -159,6 +166,15 @@ export function MovimientoDialog() {
                     .map((p) => (
                       <option key={p.id} value={`proyecto:${p.id}`}>
                         {p.nombre}
+                      </option>
+                    ))}
+                </optgroup>
+                <optgroup label="Trabajos técnicos">
+                  {trabajos
+                    .filter((t) => t.estado !== "cancelado")
+                    .map((t) => (
+                      <option key={t.id} value={`trabajo:${t.id}`}>
+                        {t.codigo} · {t.titulo}
                       </option>
                     ))}
                 </optgroup>

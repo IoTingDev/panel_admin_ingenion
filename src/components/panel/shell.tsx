@@ -6,6 +6,7 @@ import {
   Building2,
   Users,
   FolderKanban,
+  Wrench,
   Boxes,
   History,
   Settings,
@@ -21,7 +22,14 @@ import {
 import { api, API_MODE } from "@/lib/api";
 import { derivarAvisos } from "@/lib/avisos";
 import { iniciales, nombreCorto } from "@/lib/format";
-import { useMe, useClientes, useItems, useMovimientos, useProyectos } from "@/hooks/use-api";
+import {
+  useMe,
+  useClientes,
+  useItems,
+  useMovimientos,
+  useProyectos,
+  useTrabajos,
+} from "@/hooks/use-api";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -54,6 +62,7 @@ const sections: {
       { to: "/clientes", label: "Clientes", icon: Building2 },
       { to: "/usuarios", label: "Usuarios", icon: Users },
       { to: "/proyectos", label: "Proyectos", icon: FolderKanban },
+      { to: "/trabajos", label: "Trabajos", icon: Wrench },
       { to: "/inventario", label: "Inventario", icon: Boxes },
     ],
   },
@@ -73,7 +82,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { data: clientes = [] } = useClientes();
   const { data: items = [] } = useItems();
   const { data: movimientos = [] } = useMovimientos();
-  const avisos = derivarAvisos({ proyectos, clientes, items, movimientos });
+  const { data: trabajos = [] } = useTrabajos();
+  const avisos = derivarAvisos({ proyectos, clientes, items, movimientos, trabajos });
   const path = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const qc = useQueryClient();

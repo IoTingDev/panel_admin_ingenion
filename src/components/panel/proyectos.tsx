@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   FolderKanban,
   Plus,
@@ -18,7 +18,9 @@ import {
   useMovimientos,
   useApiMutation,
 } from "@/hooks/use-api";
-import { fmtFecha, fmtFechaHora } from "@/lib/format";
+import { fmtCop, fmtFecha, fmtFechaHora } from "@/lib/format";
+import { COLUMNAS_PROYECTO, ESTADOS_PROYECTO, ROTULO_ESTADO_PROYECTO } from "@/lib/dominio";
+import { materialDeDestino } from "@/lib/material";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { PageHeader, IconBox, StatusBadge, EmptyState } from "./common";
@@ -80,7 +82,7 @@ export function ProyectosView({ clienteId = "" }: { clienteId?: string }) {
           label="Todos los estados"
           value={estado}
           onChange={setEstado}
-          options={["borrador", "activo", "pausado", "finalizado", "baja"]}
+          options={ESTADOS_PROYECTO.map((e) => ({ value: e, label: ROTULO_ESTADO_PROYECTO[e] }))}
         />
         <FilterSelect
           label="Responsable"
@@ -115,7 +117,7 @@ export function ProyectosView({ clienteId = "" }: { clienteId?: string }) {
       </div>
       {board ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {(["borrador", "activo", "pausado", "finalizado"] as const).map((s) => (
+          {COLUMNAS_PROYECTO.map((s) => (
             <section
               key={s}
               className="min-h-80 bg-muted/60 p-3"
@@ -127,7 +129,7 @@ export function ProyectosView({ clienteId = "" }: { clienteId?: string }) {
               }}
             >
               <div className="mb-4 flex items-center justify-between">
-                <StatusBadge estado={s} />
+                <StatusBadge estado={s} label={ROTULO_ESTADO_PROYECTO[s]} />
                 <span className="text-xs text-muted-foreground">
                   {rows.filter((p) => p.estado === s).length}
                 </span>
@@ -169,8 +171,10 @@ export function ProyectosView({ clienteId = "" }: { clienteId?: string }) {
                         change.mutate({ id: p.id, estado: e.target.value as EstadoProyecto })
                       }
                     >
-                      {["borrador", "activo", "pausado", "finalizado"].map((st) => (
-                        <option key={st}>{st}</option>
+                      {COLUMNAS_PROYECTO.map((st) => (
+                        <option key={st} value={st}>
+                          {ROTULO_ESTADO_PROYECTO[st]}
+                        </option>
                       ))}
                     </select>
                   </article>
@@ -213,7 +217,7 @@ export function ProyectosView({ clienteId = "" }: { clienteId?: string }) {
                   <td>{clientes.find((c) => c.id === p.clienteId)?.razonSocial}</td>
                   <td>{p.responsable || "—"}</td>
                   <td>
-                    <StatusBadge estado={p.estado} />
+                    <StatusBadge estado={p.estado} label={ROTULO_ESTADO_PROYECTO[p.estado]} />
                   </td>
                   <td className="whitespace-nowrap">{fmtFecha(p.fechaInicio)}</td>
                 </tr>
@@ -236,6 +240,11 @@ export function ProyectoDetail({ id }: { id: string }) {
   const [edit, setEdit] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
   const { openMovimiento } = useUi();
+  const navigate = useNavigate();
+  const eliminar = useApiMutation(
+    (motivo: string) => api.proyectos.eliminar(id, motivo),
+    "Proyecto eliminado",
+  );
   const change = useApiMutation(
     ({ estado, motivo }: { estado: EstadoProyecto; motivo?: string }) =>
       api.proyectos.cambiarEstado(id, estado, motivo),
@@ -252,11 +261,20 @@ export function ProyectoDetail({ id }: { id: string }) {
       destructive: true,
       onConfirm: (motivo) => change.mutateAsync({ estado: "baja", motivo }),
     });
-  const materials = movs.filter(
-    (m) =>
-      (m.destinoTipo === "proyecto" && m.destinoId === p.id) ||
-      (!m.destinoId && m.proyecto === p.nombre),
-  );
+  const askEliminar = () =>
+    setConfirm({
+      title: "Eliminar proyecto",
+      description:
+        "Se elimina definitivamente (para proyectos de prueba o creados por error). Los movimientos de inventario hacia este proyecto se conservan con su nombre. Queda en auditoría.",
+      confirmLabel: "Eliminar",
+      destructive: true,
+      onConfirm: async (motivo) => {
+        await eliminar.mutateAsync(motivo);
+        await navigate({ to: "/proyectos" });
+      },
+    });
+  const material = materialDeDestino(movs, "proyecto", p.id, p.nombre);
+  const materials = material.movimientos;
   return (
     <>
       <Button asChild variant="link" className="mb-4 px-0">
@@ -281,13 +299,19 @@ export function ProyectoDetail({ id }: { id: string }) {
                   : change.mutate({ estado: e.target.value as EstadoProyecto })
               }
             >
-              {["borrador", "activo", "pausado", "finalizado", "baja"].map((s) => (
-                <option key={s}>{s}</option>
+              {ESTADOS_PROYECTO.map((s) => (
+                <option key={s} value={s}>
+                  {ROTULO_ESTADO_PROYECTO[s]}
+                </option>
               ))}
             </select>
             <Button variant="outline" onClick={() => setEdit(true)}>
               <Pencil />
               Editar
+            </Button>
+            <Button variant="outline" onClick={askEliminar}>
+              <Trash2 />
+              Eliminar
             </Button>
             <Button variant="destructive" onClick={ask}>
               <Trash2 />
@@ -342,7 +366,16 @@ export function ProyectoDetail({ id }: { id: string }) {
           </div>
         </TabsContent>
         <TabsContent value="materiales">
-          <div className="flex justify-end py-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 py-4">
+            <div data-testid="costo-material" className="text-sm">
+              <span className="text-muted-foreground">Costo del material: </span>
+              <strong data-testid="costo-material-valor">{fmtCop(material.costoTotal)}</strong>
+              {material.sinCosto > 0 && (
+                <span className="ml-2 text-xs text-muted-foreground">
+                  ({material.sinCosto} salida(s) sin valor no suman)
+                </span>
+              )}
+            </div>
             <Button
               onClick={() =>
                 openMovimiento({ destino: { tipo: "proyecto", id: p.id }, tipo: "Salida" })
@@ -360,6 +393,7 @@ export function ProyectoDetail({ id }: { id: string }) {
                   <th>SKU</th>
                   <th>Tipo</th>
                   <th>Cantidad</th>
+                  <th>Costo</th>
                   <th>Nota</th>
                 </tr>
               </thead>
@@ -374,6 +408,7 @@ export function ProyectoDetail({ id }: { id: string }) {
                     </td>
                     <td>{m.tipo}</td>
                     <td>{m.cantidad}</td>
+                    <td>{m.costoAlSalir == null ? "—" : fmtCop(m.cantidad * m.costoAlSalir)}</td>
                     <td>{m.nota || "—"}</td>
                   </tr>
                 ))}

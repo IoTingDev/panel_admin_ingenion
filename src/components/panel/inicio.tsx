@@ -9,6 +9,9 @@ import {
   Package,
   AlertTriangle,
   ArrowLeftRight,
+  Wrench,
+  CalendarClock,
+  CheckCircle2,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -31,14 +34,18 @@ import {
   useItems,
   useMovimientos,
   useAuditoria,
+  useTrabajos,
 } from "@/hooks/use-api";
-import { stockMap, esStockBajo } from "@/lib/inventario";
+import { stockMap, esStockBajo, hoyBogota } from "@/lib/inventario";
+import { ROTULO_ESTADO_PROYECTO } from "@/lib/dominio";
+import { diasSinRespaldo, hayQueRecordarRespaldo } from "@/lib/respaldo-estado";
 import { fmtNum, fmtFechaHora, isoDia } from "@/lib/format";
 import { PageHeader, StatCard, DemoBadge, Panel } from "./common";
+import { API_MODE } from "@/lib/api";
 import { Loading } from "./data-tools";
 
 const ESTADO_COLOR: Record<string, string> = {
-  borrador: "var(--muted-foreground)",
+  en_desarrollo: "var(--muted-foreground)",
   activo: "var(--success)",
   pausado: "var(--warning)",
   finalizado: "var(--info)",
@@ -51,14 +58,16 @@ export function InicioView() {
     p = useProyectos(),
     it = useItems(),
     mv = useMovimientos(),
-    au = useAuditoria();
-  if ([c, u, p, it, mv, au].some((q) => q.isLoading)) return <Loading />;
+    au = useAuditoria(),
+    tr = useTrabajos();
+  if ([c, u, p, it, mv, au, tr].some((q) => q.isLoading)) return <Loading />;
   const clientes = c.data ?? [],
     usuarios = u.data ?? [],
     proyectos = p.data ?? [],
     items = it.data ?? [],
     movs = mv.data ?? [],
-    audit = au.data ?? [];
+    audit = au.data ?? [],
+    trabajos = tr.data ?? [];
   const stocks = stockMap(items, movs);
   const bajos = items.filter((i) => esStockBajo(stocks.get(i.sku) ?? 0, i.stock_minimo));
   const desde = Date.now() - 30 * 864e5;
@@ -73,13 +82,35 @@ export function InicioView() {
     };
   });
   const porEstado = Object.keys(ESTADO_COLOR)
-    .map((e) => ({ name: e, value: proyectos.filter((x) => x.estado === e).length }))
+    .map((e) => ({
+      estado: e,
+      name: ROTULO_ESTADO_PROYECTO[e as keyof typeof ROTULO_ESTADO_PROYECTO],
+      value: proyectos.filter((x) => x.estado === e).length,
+    }))
     .filter((x) => x.value);
   const sectores = [...new Set(clientes.map((x) => x.sector))].map((s) => ({
     sector: s,
     clientes: clientes.filter((x) => x.sector === s && x.estado !== "baja").length,
   }));
   const pausados = proyectos.filter((x) => x.estado === "pausado");
+  const hoy = hoyBogota();
+  const en7 = isoDia(new Date(Date.now() + 7 * 864e5).toISOString());
+  const enCurso = trabajos.filter((t) => t.estado === "en_curso");
+  const programadosSemana = trabajos.filter(
+    (t) =>
+      t.estado === "programado" &&
+      !!t.fechaProgramada &&
+      t.fechaProgramada.slice(0, 10) >= hoy &&
+      t.fechaProgramada.slice(0, 10) <= en7,
+  );
+  const vencidos = trabajos.filter(
+    (t) => t.estado === "programado" && !!t.fechaProgramada && t.fechaProgramada.slice(0, 10) < hoy,
+  );
+  const hace30 = isoDia(new Date(Date.now() - 30 * 864e5).toISOString());
+  const completados30 = trabajos.filter(
+    (t) => t.estado === "completado" && !!t.fechaFin && t.fechaFin.slice(0, 10) >= hace30,
+  );
+  const recordarRespaldo = hayQueRecordarRespaldo();
   const suspendidos = clientes.filter((x) => x.estado === "suspendido");
   return (
     <>
@@ -93,6 +124,27 @@ export function InicioView() {
         subtitle="Vista general de la operación — Industria 4.0"
         actions={<DemoBadge />}
       />
+      {API_MODE === "mock" && (
+        <p className="mb-4 text-xs text-muted-foreground">
+          Los datos están guardados solo en este navegador (modo simulado); haga respaldos desde
+          Configuración.
+        </p>
+      )}
+      {recordarRespaldo && (
+        <div
+          role="status"
+          data-testid="recordatorio-respaldo"
+          className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-warning/30 bg-warning/15 p-4 text-sm"
+        >
+          <span>
+            Hace <strong>{diasSinRespaldo()} días</strong> que no hace un respaldo. Los datos están
+            guardados solo en este navegador.
+          </span>
+          <Link to="/configuracion" className="font-semibold text-primary">
+            Hacer respaldo
+          </Link>
+        </div>
+      )}
       <div className="mb-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Clientes activos"
@@ -106,7 +158,7 @@ export function InicioView() {
           tone="info"
         />
         <StatCard
-          label="Proyectos activos"
+          label="Proyectos en operación"
           value={proyectos.filter((x) => x.estado === "activo").length}
           icon={FolderKanban}
           tone="success"
@@ -134,6 +186,27 @@ export function InicioView() {
         />
         <StatCard label="Movimientos (30 días)" value={recientes.length} icon={ArrowLeftRight} />
       </div>
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Trabajos en curso" value={enCurso.length} icon={Wrench} tone="warning" />
+        <StatCard
+          label="Programados esta semana"
+          value={programadosSemana.length}
+          icon={CalendarClock}
+          tone="info"
+        />
+        <StatCard
+          label="Trabajos vencidos sin iniciar"
+          value={vencidos.length}
+          icon={AlertTriangle}
+          tone={vencidos.length ? "destructive" : "success"}
+        />
+        <StatCard
+          label="Completados (30 días)"
+          value={completados30.length}
+          icon={CheckCircle2}
+          tone="success"
+        />
+      </div>
       <div className="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-3">
         <div className="min-w-0 rounded-xl border bg-card p-5 shadow-soft">
           <h3 className="mb-3 font-semibold">Proyectos por estado</h3>
@@ -150,7 +223,7 @@ export function InicioView() {
                   isAnimationActive={animar}
                 >
                   {porEstado.map((e) => (
-                    <Cell key={e.name} fill={ESTADO_COLOR[e.name]} />
+                    <Cell key={e.name} fill={ESTADO_COLOR[e.estado]} />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -159,10 +232,10 @@ export function InicioView() {
           </div>
           <div className="flex flex-wrap gap-3 text-xs">
             {porEstado.map((e) => (
-              <span key={e.name} className="flex items-center gap-1 capitalize">
+              <span key={e.name} className="flex items-center gap-1">
                 <span
                   className="size-2 rounded-full"
-                  style={{ background: ESTADO_COLOR[e.name] }}
+                  style={{ background: ESTADO_COLOR[e.estado] }}
                 />
                 {e.name} ({e.value})
               </span>
@@ -265,6 +338,16 @@ export function InicioView() {
                 className="block rounded-lg border border-warning/30 bg-warning/15 p-3 text-sm"
               >
                 <span className="font-medium">Proyecto pausado</span> · {x.nombre}
+              </Link>
+            ))}
+            {vencidos.map((x) => (
+              <Link
+                key={x.id}
+                to="/trabajos/$id"
+                params={{ id: x.id }}
+                className="block rounded-lg border border-warning/30 bg-warning/15 p-3 text-sm"
+              >
+                <span className="font-medium">Trabajo vencido</span> · {x.codigo} {x.titulo}
               </Link>
             ))}
             {suspendidos.map((x) => (

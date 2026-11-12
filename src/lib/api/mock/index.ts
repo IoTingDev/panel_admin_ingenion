@@ -12,69 +12,23 @@ import { grupoDeCategoria, validarConfigInventario } from "@/lib/config-inventar
 import { previsualizarValores, promedioPonderado, tieneCompras } from "@/lib/valoracion";
 import { uid } from "@/lib/format";
 import type { Api, Auditoria, Cliente, ItemInventario, NuevoMovimiento, Operador } from "../types";
-import { migrarV1aV2 } from "./migracion";
-import { ACTOR, buildSeed, type MockDb } from "./seed";
+import { ACTOR, type MockDb } from "./seed";
+import {
+  SESSION_KEY,
+  audit,
+  clone,
+  db,
+  delay,
+  exigirClienteActivo,
+  exigirMotivo,
+  must,
+  persist,
+} from "./store";
+import { trabajosApi } from "./trabajos";
+import { respaldoApi } from "./respaldo";
+import { configuracionExtra } from "./config-extra";
 
-const DB_KEY = "ioting.mock.db.v2";
-/** La v1 se conserva intacta como respaldo tras migrar. */
-const DB_KEY_V1 = "ioting.mock.db.v1";
-const SESSION_KEY = "ioting.mock.session.v1";
-const delay = (ms = 120) => new Promise((r) => setTimeout(r, ms));
-
-let cache: MockDb | null = null;
-function db(): MockDb {
-  if (cache) return cache;
-  if (typeof window !== "undefined") {
-    const raw = window.localStorage.getItem(DB_KEY);
-    if (raw) {
-      try {
-        const guardada = JSON.parse(raw) as MockDb;
-        guardada.secuencias ??= inicializarSecuencias(guardada.items, guardada.movimientos);
-        cache = guardada;
-        return cache;
-      } catch {
-        /* reseed */
-      }
-    }
-    const v1 = window.localStorage.getItem(DB_KEY_V1);
-    if (v1) {
-      try {
-        cache = migrarV1aV2(JSON.parse(v1) as Record<string, unknown>);
-        persist();
-        return cache;
-      } catch {
-        /* reseed */
-      }
-    }
-  }
-  cache = buildSeed();
-  persist();
-  return cache;
-}
-function persist() {
-  if (typeof window !== "undefined" && cache)
-    window.localStorage.setItem(DB_KEY, JSON.stringify(cache));
-}
-const clone = <T>(v: T): T => structuredClone(v);
-
-function audit(data: Omit<Auditoria, "id" | "fecha" | "actor">): Auditoria {
-  const ev: Auditoria = { id: uid(), fecha: new Date().toISOString(), actor: ACTOR, ...data };
-  db().auditoria.unshift(ev);
-  return ev;
-}
-
-/** Un usuario/proyecto no se reactiva mientras su cliente esté en baja o suspendido. */
-function exigirClienteActivo(cliente: Cliente | undefined, que: string) {
-  if (!cliente || cliente.estado === "activo") return;
-  throw new Error(
-    `No se puede reactivar ${que}: el cliente ${cliente.razonSocial} está en ${cliente.estado}. Reactive primero al cliente.`,
-  );
-}
-
-function must<T>(v: T | undefined, msg: string): T {
-  if (v === undefined) throw new Error(msg);
-  return v;
-}
+export { resetMemoria, resetMockDb } from "./store";
 
 const OPERADOR: Operador = {
   id: "op-0001",
@@ -83,14 +37,32 @@ const OPERADOR: Operador = {
   rol: "Administrador",
 };
 
-/** Descarta la copia en memoria y vuelve a leer del almacenamiento (útil en pruebas). */
-export function resetMemoria() {
-  cache = null;
+const ABIERTO = ["programado", "en_curso"];
+
+function exigirSector(sector: string) {
+  if (!db().config.sectores.includes(sector))
+    throw new Error(`El sector «${sector}» no está en la lista de sectores.`);
 }
 
-export function resetMockDb() {
-  cache = buildSeed();
-  persist();
+/** Reglas de proyecto: cliente activo, nombre, fechas (fin ≥ inicio; el pasado se permite). */
+function validarProyecto(
+  p: {
+    clienteId: string;
+    nombre: string;
+    fechaInicio?: string | undefined;
+    fechaFin?: string | undefined;
+  },
+  nuevo: boolean,
+) {
+  const cliente = db().clientes.find((c) => c.id === p.clienteId);
+  if (!cliente) throw new Error("El cliente indicado no existe.");
+  if (nuevo && cliente.estado !== "activo")
+    throw new Error(
+      `El cliente ${cliente.razonSocial} está en ${cliente.estado}: no admite proyectos nuevos.`,
+    );
+  if (!p.nombre || !p.nombre.trim()) throw new Error("El nombre del proyecto es obligatorio.");
+  if (p.fechaInicio && p.fechaFin && p.fechaFin.slice(0, 10) < p.fechaInicio.slice(0, 10))
+    throw new Error("La fecha de fin no puede ser anterior a la de inicio.");
 }
 
 const existeDestino = (tipo: "proyecto" | "trabajo", id: string) => {
@@ -117,10 +89,16 @@ function aplicarMovimiento(data: NuevoMovimiento) {
     if (err) throw new Error(err);
   }
   const fecha = normalizarFecha(data.fecha).iso;
+  const trabajo =
+    data.destinoTipo === "trabajo" ? d.trabajos.find((t) => t.id === data.destinoId) : undefined;
+  if (trabajo?.estado === "cancelado")
+    throw new Error(`El trabajo ${trabajo.codigo} está cancelado: no admite más material.`);
   const proyecto =
     data.destinoTipo === "proyecto"
       ? d.proyectos.find((p) => p.id === data.destinoId)?.nombre
-      : data.proyecto;
+      : trabajo
+        ? `${trabajo.codigo} · ${trabajo.titulo}`
+        : data.proyecto;
   const m = {
     id: uid(),
     fecha,
@@ -132,6 +110,7 @@ function aplicarMovimiento(data: NuevoMovimiento) {
     costoUnitario: data.costoUnitario,
     destinoTipo: data.destinoTipo,
     destinoId: data.destinoId,
+    ...(data.tipo === "Salida" ? { costoAlSalir: item.valorUnitario ?? null } : {}),
   };
   d.movimientos.push(m);
   let detalleValor = "";
@@ -199,6 +178,7 @@ export const mockApi: Api = {
     },
     async create(data) {
       await delay();
+      exigirSector(data.sector);
       const c = {
         ...data,
         id: uid(),
@@ -221,6 +201,7 @@ export const mockApi: Api = {
         db().clientes.find((x) => x.id === id),
         "Cliente no encontrado",
       );
+      if (data.sector !== undefined && data.sector !== c.sector) exigirSector(data.sector);
       Object.assign(c, data);
       audit({
         accion: "cliente.editar",
@@ -238,6 +219,7 @@ export const mockApi: Api = {
         proyectos: d.proyectos.filter(
           (p) => p.clienteId === id && p.estado !== "baja" && p.estado !== "finalizado",
         ).length,
+        trabajos: d.trabajos.filter((t) => t.clienteId === id && ABIERTO.includes(t.estado)).length,
       };
     },
     async hijosReactivables(id) {
@@ -245,10 +227,15 @@ export const mockApi: Api = {
       return clone({
         usuarios: d.usuarios.filter((u) => u.clienteId === id && u.estado === "baja"),
         proyectos: d.proyectos.filter((p) => p.clienteId === id && p.estado === "baja"),
+        trabajos: d.trabajos.filter(
+          (t) => t.clienteId === id && t.estado === "cancelado" && t.bajaPorCliente,
+        ),
       });
     },
     async cambiarEstado(id, estado, motivo) {
       await delay();
+      if (estado !== "activo")
+        exigirMotivo(motivo, estado === "baja" ? "La baja del cliente" : "Suspender al cliente");
       const d = db();
       const c = must(
         d.clientes.find((x) => x.id === id),
@@ -289,6 +276,19 @@ export const mockApi: Api = {
               entidad: "proyecto",
               entidadId: p.id,
               detalle: `Baja en cascada por baja del cliente ${c.razonSocial}`,
+            });
+          });
+        d.trabajos
+          .filter((t) => t.clienteId === id && ABIERTO.includes(t.estado))
+          .forEach((t) => {
+            t.estado = "cancelado";
+            t.bajaPorCliente = true;
+            t.motivoCancelacion = `Baja del cliente ${c.razonSocial}`;
+            audit({
+              accion: "trabajo.cancelar",
+              entidad: "trabajo",
+              entidadId: t.id,
+              detalle: `${t.codigo}: cancelado en cascada por baja del cliente ${c.razonSocial}`,
             });
           });
       }
@@ -352,6 +352,8 @@ export const mockApi: Api = {
     },
     async cambiarEstado(id, estado, motivo) {
       await delay();
+      if (estado !== "activo")
+        exigirMotivo(motivo, estado === "baja" ? "La baja del usuario" : "Suspender al usuario");
       const u = must(
         db().usuarios.find((x) => x.id === id),
         "Usuario no encontrado",
@@ -392,7 +394,8 @@ export const mockApi: Api = {
     },
     async create(data) {
       await delay();
-      const p = { ...data, id: uid() };
+      validarProyecto(data, true);
+      const p = { ...data, id: uid(), registradoEn: new Date().toISOString() };
       db().proyectos.unshift(p);
       audit({
         accion: "proyecto.crear",
@@ -409,6 +412,7 @@ export const mockApi: Api = {
         db().proyectos.find((x) => x.id === id),
         "Proyecto no encontrado",
       );
+      validarProyecto({ ...p, ...data }, false);
       Object.assign(p, data);
       audit({
         accion: "proyecto.editar",
@@ -421,6 +425,7 @@ export const mockApi: Api = {
     },
     async cambiarEstado(id, estado, motivo) {
       await delay(60);
+      if (estado === "baja") exigirMotivo(motivo, "La baja del proyecto");
       const p = must(
         db().proyectos.find((x) => x.id === id),
         "Proyecto no encontrado",
@@ -442,7 +447,27 @@ export const mockApi: Api = {
       persist();
       return clone(p);
     },
+    async eliminar(id, motivo) {
+      await delay();
+      const d = db();
+      const mt = exigirMotivo(motivo, "La eliminación del proyecto");
+      const p = must(
+        d.proyectos.find((x) => x.id === id),
+        "Proyecto no encontrado",
+      );
+      d.proyectos = d.proyectos.filter((x) => x.id !== id);
+      audit({
+        accion: "proyecto.eliminar",
+        entidad: "proyecto",
+        entidadId: id,
+        detalle: `"${p.nombre}". Motivo: ${mt}`,
+      });
+      persist();
+    },
   },
+
+  trabajos: trabajosApi,
+  respaldo: respaldoApi,
 
   inventario: {
     async listItems() {
@@ -652,5 +677,6 @@ export const mockApi: Api = {
       persist();
       return clone(d.config);
     },
+    ...configuracionExtra,
   },
 };

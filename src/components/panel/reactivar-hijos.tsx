@@ -30,10 +30,12 @@ export function ReactivarHijosDialog({
   const qc = useQueryClient();
   const [usuarios, setUsuarios] = useState<Set<string>>(new Set());
   const [proyectos, setProyectos] = useState<Set<string>>(new Set());
+  const [trabajos, setTrabajos] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     setUsuarios(new Set());
     setProyectos(new Set());
+    setTrabajos(new Set());
   }, [hijos]);
   const toggle = (set: Set<string>, setter: (s: Set<string>) => void, id: string) => {
     const n = new Set(set);
@@ -41,13 +43,14 @@ export function ReactivarHijosDialog({
     else n.add(id);
     setter(n);
   };
-  const total = usuarios.size + proyectos.size;
+  const total = usuarios.size + proyectos.size + trabajos.size;
   const aplicar = async () => {
     setBusy(true);
     try {
       const motivo = "Reactivación selectiva tras reactivar al cliente";
       for (const id of usuarios) await api.usuarios.cambiarEstado(id, "activo", motivo);
       for (const id of proyectos) await api.proyectos.cambiarEstado(id, "activo", motivo);
+      for (const id of trabajos) await api.trabajos.cambiarEstado(id, "programado", motivo);
       await qc.invalidateQueries();
       toast.success(`${total} registro(s) reactivado(s)`);
       onClose();
@@ -63,8 +66,8 @@ export function ReactivarHijosDialog({
         <DialogHeader>
           <DialogTitle>Cliente reactivado</DialogTitle>
           <DialogDescription>
-            Sus usuarios y proyectos siguen en baja. Marque los que quiere reactivar; el resto queda
-            como está.
+            Sus usuarios, proyectos y trabajos siguen en baja o cancelados. Marque los que quiere
+            reactivar; el resto queda como está.
           </DialogDescription>
         </DialogHeader>
         <div className="max-h-72 space-y-4 overflow-auto text-sm">
@@ -92,6 +95,20 @@ export function ReactivarHijosDialog({
                     onCheckedChange={() => toggle(proyectos, setProyectos, p.id)}
                   />
                   {p.nombre}
+                </label>
+              ))}
+            </fieldset>
+          )}
+          {hijos && hijos.trabajos.length > 0 && (
+            <fieldset className="space-y-2">
+              <legend className="mb-1 font-semibold">Trabajos técnicos</legend>
+              {hijos.trabajos.map((t) => (
+                <label key={t.id} className="flex items-center gap-2">
+                  <Checkbox
+                    checked={trabajos.has(t.id)}
+                    onCheckedChange={() => toggle(trabajos, setTrabajos, t.id)}
+                  />
+                  {t.codigo} · {t.titulo}
                 </label>
               ))}
             </fieldset>

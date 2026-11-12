@@ -3,7 +3,8 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { api, type Cliente } from "@/lib/api";
-import { useApiMutation } from "@/hooks/use-api";
+import { useApiMutation, useConfiguracion } from "@/hooks/use-api";
+import { TIPOS_CLIENTE } from "@/lib/dominio";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,6 +21,8 @@ const clienteSchema = z.object({
   razonSocial: z.string().min(3, "Mínimo 3 caracteres"),
   nit: z.string(),
   sector: z.string().min(1),
+  tipoCliente: z.enum(["empresa", "persona"]),
+  direccion: z.string(),
   ciudad: z.string(),
   contactoNombre: z.string(),
   contactoEmail: z.string().email("Correo inválido").or(z.literal("")),
@@ -36,12 +39,15 @@ export function ClienteSheet({
   onClose: () => void;
   cliente?: Cliente | undefined;
 }) {
+  const { data: config } = useConfiguracion();
   const form = useForm<ClienteForm>({
     resolver: zodResolver(clienteSchema),
     defaultValues: {
       razonSocial: "",
       nit: "",
       sector: "cacao",
+      tipoCliente: "empresa",
+      direccion: "",
       ciudad: "",
       contactoNombre: "",
       contactoEmail: "",
@@ -54,6 +60,8 @@ export function ClienteSheet({
       razonSocial: cliente?.razonSocial ?? "",
       nit: cliente?.nit ?? "",
       sector: cliente?.sector ?? "cacao",
+      tipoCliente: cliente?.tipoCliente ?? "empresa",
+      direccion: cliente?.direccion ?? "",
       ciudad: cliente?.ciudad ?? "",
       contactoNombre: cliente?.contactoNombre ?? "",
       contactoEmail: cliente?.contactoEmail ?? "",
@@ -111,10 +119,28 @@ export function ClienteSheet({
           <div className="space-y-2">
             <Label htmlFor="sector">Sector</Label>
             <select id="sector" className="app-select w-full" {...form.register("sector")}>
-              {["cacao", "café", "mango", "otro"].map((s) => (
+              {(config?.sectores ?? ["cacao"]).map((s) => (
                 <option key={s}>{s}</option>
               ))}
             </select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="tipoCliente">Tipo de cliente</Label>
+            <select
+              id="tipoCliente"
+              className="app-select w-full"
+              {...form.register("tipoCliente")}
+            >
+              {TIPOS_CLIENTE.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="direccion">Dirección</Label>
+            <Input id="direccion" {...form.register("direccion")} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="notas">Notas</Label>

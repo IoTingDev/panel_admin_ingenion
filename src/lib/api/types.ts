@@ -1,6 +1,9 @@
 export type Estado = "activo" | "suspendido" | "baja";
 export type RolUsuario = "administrador" | "operador" | "lectura";
-export type EstadoProyecto = "borrador" | "activo" | "pausado" | "finalizado" | "baja";
+export type EstadoProyecto = "en_desarrollo" | "activo" | "pausado" | "finalizado" | "baja";
+export type TipoCliente = "persona" | "empresa";
+export type TipoTrabajo = "cctv" | "alarmas" | "telecom" | "mantenimiento" | "instalacion" | "otro";
+export type EstadoTrabajo = "programado" | "en_curso" | "completado" | "cancelado";
 export type EstadoItem = "Disponible" | "En uso" | "En reparación" | "Dañado" | "Baja";
 export type TipoMovimiento = "Entrada" | "Salida";
 export type GrupoInventario = "componentes" | "herramientas" | "equipos" | "seguridad";
@@ -15,9 +18,13 @@ export interface Cliente {
   contactoNombre?: string | undefined;
   contactoEmail?: string | undefined;
   contactoTelefono?: string | undefined;
+  direccion?: string | undefined;
+  tipoCliente?: TipoCliente | undefined;
   estado: Estado;
   creadoEn: string;
   notas?: string | undefined;
+  /** Dato de demostración: lo elimina «Limpiar datos de demostración». */
+  esDemo?: boolean | undefined;
 }
 
 export interface UsuarioCliente {
@@ -29,6 +36,7 @@ export interface UsuarioCliente {
   estado: Estado;
   ultimoAcceso?: string | undefined;
   creadoEn: string;
+  esDemo?: boolean | undefined;
 }
 
 export interface Proyecto {
@@ -41,6 +49,34 @@ export interface Proyecto {
   fechaFin?: string | undefined;
   responsable?: string | undefined;
   etiquetas?: string[] | undefined;
+  /** Momento técnico del registro; `fechaInicio` es la fecha real que indica la persona. */
+  registradoEn?: string | undefined;
+  esDemo?: boolean | undefined;
+}
+
+export interface TrabajoTecnico {
+  id: string;
+  /** Consecutivo TT-0001; no se reutiliza. */
+  codigo: string;
+  clienteId: string;
+  tipo: TipoTrabajo;
+  titulo: string;
+  descripcion?: string | undefined;
+  sitioDireccion?: string | undefined;
+  ciudad?: string | undefined;
+  responsable?: string | undefined;
+  estado: EstadoTrabajo;
+  fechaProgramada?: string | undefined;
+  fechaInicio?: string | undefined;
+  fechaFin?: string | undefined;
+  /** COP, informativo: la facturación vive en Alegra. */
+  valorPactado?: number | undefined;
+  notas?: string | undefined;
+  motivoCancelacion?: string | undefined;
+  /** Cancelado en cascada por la baja de su cliente (se puede ofrecer reactivar). */
+  bajaPorCliente?: boolean | undefined;
+  registradoEn: string;
+  esDemo?: boolean | undefined;
 }
 
 export interface Auditoria {
@@ -91,6 +127,9 @@ export interface MovimientoInventario {
   costoUnitario?: number | undefined;
   destinoTipo?: DestinoTipo | undefined;
   destinoId?: string | undefined;
+  /** Costo unitario vigente del ítem al registrar la salida (snapshot); null/ausente = sin valor. */
+  costoAlSalir?: number | null | undefined;
+  esDemo?: boolean | undefined;
 }
 
 export interface InventarioExport {
@@ -116,6 +155,8 @@ export interface ConfigInventario {
 
 export interface Configuracion {
   inventario: ConfigInventario;
+  /** Sectores de clientes (lista configurable). */
+  sectores: string[];
 }
 
 /** Una fila de la plantilla de valores (CSV). valor/año nulos = «no cambiar». */
@@ -138,12 +179,14 @@ export interface Operador {
 export interface ImpactoBaja {
   usuarios: number;
   proyectos: number;
+  trabajos: number;
 }
 
 /** Hijos de un cliente que siguen en baja y se pueden reactivar uno a uno. */
 export interface HijosReactivables {
   usuarios: UsuarioCliente[];
   proyectos: Proyecto[];
+  trabajos: TrabajoTecnico[];
 }
 
 export interface ErrorFilaLote {
@@ -177,6 +220,34 @@ export interface ProyectosApi {
   create(data: Omit<Proyecto, "id">): Promise<Proyecto>;
   update(id: string, data: Partial<Omit<Proyecto, "id">>): Promise<Proyecto>;
   cambiarEstado(id: string, estado: EstadoProyecto, motivo?: string): Promise<Proyecto>;
+  /** Eliminación definitiva (datos de prueba o creados por error). Exige motivo. */
+  eliminar(id: string, motivo: string): Promise<void>;
+}
+
+export interface NuevoTrabajo {
+  clienteId: string;
+  tipo: TipoTrabajo;
+  titulo: string;
+  descripcion?: string | undefined;
+  sitioDireccion?: string | undefined;
+  ciudad?: string | undefined;
+  responsable?: string | undefined;
+  estado?: EstadoTrabajo | undefined;
+  fechaProgramada?: string | undefined;
+  fechaInicio?: string | undefined;
+  fechaFin?: string | undefined;
+  valorPactado?: number | undefined;
+  notas?: string | undefined;
+}
+
+export interface TrabajosApi {
+  list(): Promise<TrabajoTecnico[]>;
+  get(id: string): Promise<TrabajoTecnico | null>;
+  create(data: NuevoTrabajo): Promise<TrabajoTecnico>;
+  update(id: string, data: Partial<NuevoTrabajo>): Promise<TrabajoTecnico>;
+  /** Cancelar exige motivo. No se reactiva si el cliente está en baja o suspendido. */
+  cambiarEstado(id: string, estado: EstadoTrabajo, motivo?: string): Promise<TrabajoTecnico>;
+  eliminar(id: string, motivo: string): Promise<void>;
 }
 
 export interface NuevoMovimiento {
@@ -221,13 +292,51 @@ export interface AuthApi {
   role(): Promise<Operador["rol"] | null>;
 }
 
+export interface ResultadoLimpiezaDemo {
+  clientes: number;
+  usuarios: number;
+  proyectos: number;
+  trabajos: number;
+  movimientos: number;
+  /** Clientes de demostración que se conservan porque tienen datos creados por el usuario. */
+  clientesConservados: number;
+}
+
 export interface ConfiguracionApi {
   get(): Promise<Configuracion>;
   actualizarInventario(cfg: ConfigInventario): Promise<Configuracion>;
+  actualizarSectores(sectores: string[]): Promise<Configuracion>;
+  /** Elimina solo registros esDemo. `confirmacion` debe ser exactamente «ELIMINAR DEMO». */
+  limpiarDemo(confirmacion: string): Promise<ResultadoLimpiezaDemo>;
+}
+
+/** Contenido de un respaldo completo (solo modo mock: en modo api lo hace el backend). */
+export interface Respaldo {
+  formato: "ioting-panel-respaldo";
+  version: number;
+  exportadoEn: string;
+  datos: Record<string, unknown>;
+}
+
+export interface ResumenRespaldo {
+  exportadoEn: string;
+  version: number;
+  /** Conteo por entidad dentro del respaldo y lo que hay hoy. */
+  entidades: { nombre: string; enRespaldo: number; actual: number }[];
+}
+
+export interface RespaldoApi {
+  exportar(): Promise<Respaldo>;
+  /** Valida el archivo y resume qué contiene, sin aplicar nada. Lanza si no es válido. */
+  previsualizar(texto: string): Promise<ResumenRespaldo>;
+  /** Reemplaza todos los datos por los del respaldo (validado). Audita. */
+  importar(texto: string): Promise<ResumenRespaldo>;
 }
 
 export interface Api {
   configuracion: ConfiguracionApi;
+  respaldo: RespaldoApi;
+  trabajos: TrabajosApi;
   clientes: ClientesApi;
   usuarios: UsuariosApi;
   proyectos: ProyectosApi;

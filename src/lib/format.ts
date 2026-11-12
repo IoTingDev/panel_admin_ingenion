@@ -1,5 +1,9 @@
 const TZ = "America/Bogota";
 
+/** AAAA-MM-DD (sin hora) se toma como ese día en Bogotá, no como medianoche UTC (que caería el día anterior). */
+export const instanteDe = (iso: string) =>
+  new Date(/^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso + "T12:00:00-05:00" : iso);
+
 export function fmtFecha(iso?: string): string {
   if (!iso) return "—";
   return new Intl.DateTimeFormat("es-CO", {
@@ -7,7 +11,7 @@ export function fmtFecha(iso?: string): string {
     day: "2-digit",
     month: "short",
     year: "numeric",
-  }).format(new Date(iso));
+  }).format(instanteDe(iso));
 }
 
 export function fmtFechaHora(iso?: string): string {
