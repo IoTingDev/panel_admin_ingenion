@@ -427,6 +427,8 @@ export const mockApi: Api = {
         db().items.find((x) => x.sku === sku),
         "Ítem no encontrado",
       );
+      if (data.estado === "Baja" && i.estado !== "Baja")
+        throw new Error("La baja exige un motivo: use «Dar de baja».");
       const cambios = Object.entries(data).map(
         ([k, v]) =>
           `${k}: ${String((i as unknown as Record<string, unknown>)[k] ?? "—")} → ${String(v ?? "—")}`,

@@ -85,6 +85,9 @@ function estadoRetiro(
 }
 
 const ESTADOS: EstadoItem[] = ["Disponible", "En uso", "En reparación", "Dañado", "Baja"];
+/** «Baja» solo se alcanza con la acción «Dar de baja» (exige motivo y deja auditoría). */
+const estadosEditables = (actual: EstadoItem) =>
+  actual === "Baja" ? ESTADOS : ESTADOS.filter((e) => e !== "Baja");
 const GRUPOS: { v: GrupoInventario; l: string }[] = [
   { v: "componentes", l: "Componentes" },
   { v: "herramientas", l: "Herramientas y Cableado" },
@@ -301,7 +304,7 @@ export function InventarioView() {
                         upd.mutate({ sku: i.sku, data: { estado: e.target.value as EstadoItem } })
                       }
                     >
-                      {ESTADOS.map((x) => (
+                      {estadosEditables(i.estado).map((x) => (
                         <option key={x}>{x}</option>
                       ))}
                     </select>
@@ -726,7 +729,7 @@ export function ItemDetail({ sku }: { sku: string }) {
               value={item.estado}
               onChange={(e) => upd.mutate({ estado: e.target.value as EstadoItem })}
             >
-              {ESTADOS.map((x) => (
+              {estadosEditables(item.estado).map((x) => (
                 <option key={x}>{x}</option>
               ))}
             </select>

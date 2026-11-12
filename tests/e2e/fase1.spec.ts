@@ -113,3 +113,17 @@ test("el usuario del encabezado sale de la sesión, no de texto fijo", async ({ 
   await expect(page.locator("header")).toContainText("AP");
   await expect(page.locator("header")).not.toContainText("Juan Camilo");
 });
+
+test("avatar: el usuario semilla «Juan Camilo Velásquez» da «JV», leído de la sesión", async ({
+  page,
+}) => {
+  await entrar(page);
+  const sesion = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("ioting.mock.session.v1") ?? "{}"),
+  );
+  // Precondición: el dato de partida es el esperado (no se asume, se lee).
+  expect(sesion.nombre).toBe("Juan Camilo Velásquez");
+  const avatar = page.locator("header span.rounded-full").filter({ hasText: /^[A-Z]{1,2}$/ });
+  await expect(avatar).toHaveText("JV");
+  await expect(page.locator("header")).toContainText("Juan Camilo");
+});

@@ -10,6 +10,17 @@ const ANCHOS = [
 
 async function entrar(page: Page, tema: "light" | "dark") {
   await page.addInitScript((t) => window.localStorage.setItem("theme", t), tema);
+  // Solo en pruebas: detiene las animaciones CSS (p. ej. el punto pulsante de «Datos de
+  // demostración») para que el comparador no marque diferencias que no son de la fase.
+  await page.addInitScript(() => {
+    const congelar = () => {
+      const s = document.createElement("style");
+      s.textContent = "*,*::before,*::after{animation:none!important;transition:none!important}";
+      document.head.appendChild(s);
+    };
+    if (document.head) congelar();
+    else document.addEventListener("DOMContentLoaded", congelar);
+  });
   await page.goto("/login");
   await page.getByLabel("Contraseña").fill("demo1234");
   await page.getByRole("button", { name: /ingresar|entrar|iniciar/i }).click();

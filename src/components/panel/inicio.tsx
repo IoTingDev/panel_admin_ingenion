@@ -1,3 +1,4 @@
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { Link } from "@tanstack/react-router";
 import {
   Building2,
@@ -44,6 +45,7 @@ const ESTADO_COLOR: Record<string, string> = {
   baja: "var(--destructive)",
 };
 export function InicioView() {
+  const animar = !useReducedMotion();
   const c = useClientes(),
     u = useUsuarios(),
     p = useProyectos(),
@@ -145,6 +147,7 @@ export function InicioView() {
                   innerRadius={55}
                   outerRadius={90}
                   paddingAngle={3}
+                  isAnimationActive={animar}
                 >
                   {porEstado.map((e) => (
                     <Cell key={e.name} fill={ESTADO_COLOR[e.name]} />
@@ -190,10 +193,17 @@ export function InicioView() {
                   width={28}
                 />
                 <Tooltip />
-                <Area type="monotone" dataKey="Salidas" stroke="var(--primary)" fill="url(#gS)" />
+                <Area
+                  type="monotone"
+                  dataKey="Salidas"
+                  stroke="var(--primary)"
+                  fill="url(#gS)"
+                  isAnimationActive={animar}
+                />
                 <Area
                   type="monotone"
                   dataKey="Entradas"
+                  isAnimationActive={animar}
                   stroke="var(--primary-glow)"
                   fill="url(#gE)"
                 />
@@ -223,7 +233,12 @@ export function InicioView() {
                   stroke="var(--muted-foreground)"
                 />
                 <Tooltip />
-                <Bar dataKey="clientes" fill="url(#gB)" radius={[6, 6, 0, 0]} />
+                <Bar
+                  dataKey="clientes"
+                  fill="url(#gB)"
+                  radius={[6, 6, 0, 0]}
+                  isAnimationActive={animar}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>

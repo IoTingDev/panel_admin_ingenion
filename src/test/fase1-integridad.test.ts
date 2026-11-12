@@ -187,3 +187,13 @@ describe("1.4 cascada y reactivación", () => {
     );
   });
 });
+
+describe("1.2 la baja no se puede saltar por la edición", () => {
+  it("updateItem no acepta estado Baja: debe pasar por darDeBaja, que exige motivo", async () => {
+    const it = await api.inventario.createItem(nuevoItem());
+    await expect(api.inventario.updateItem(it.sku, { estado: "Baja" })).rejects.toThrow(/motivo/i);
+    expect((await api.inventario.listItems()).find((i) => i.sku === it.sku)?.estado).toBe(
+      "Disponible",
+    );
+  });
+});
