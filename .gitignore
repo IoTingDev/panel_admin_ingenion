@@ -33,3 +33,4 @@ dist-ssr
 test-results
 playwright-report
 tests/visual/actual
+tests/visual/diff

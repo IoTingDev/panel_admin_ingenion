@@ -1,6 +1,12 @@
-import { stockMap, siguienteSku, validarSalida } from "@/lib/inventario";
+import {
+  inicializarSecuencias,
+  reservarSku,
+  stockMap,
+  validarLote,
+  validarSalida,
+} from "@/lib/inventario";
 import { uid } from "@/lib/format";
-import type { Api, Auditoria, NuevoMovimiento, Operador } from "../types";
+import type { Api, Auditoria, Cliente, NuevoMovimiento, Operador } from "../types";
 import { ACTOR, buildSeed, type MockDb } from "./seed";
 
 const DB_KEY = "ioting.mock.db.v1";
@@ -14,7 +20,10 @@ function db(): MockDb {
     const raw = window.localStorage.getItem(DB_KEY);
     if (raw) {
       try {
-        cache = JSON.parse(raw) as MockDb;
+        const guardada = JSON.parse(raw) as MockDb;
+        // Bases guardadas antes de existir el contador: se siembra con ítems y movimientos.
+        guardada.secuencias ??= inicializarSecuencias(guardada.items, guardada.movimientos);
+        cache = guardada;
         return cache;
       } catch {
         /* reseed */
@@ -37,6 +46,14 @@ function audit(data: Omit<Auditoria, "id" | "fecha" | "actor">): Auditoria {
   return ev;
 }
 
+/** Un usuario/proyecto no se reactiva mientras su cliente esté en baja o suspendido. */
+function exigirClienteActivo(cliente: Cliente | undefined, que: string) {
+  if (!cliente || cliente.estado === "activo") return;
+  throw new Error(
+    `No se puede reactivar ${que}: el cliente ${cliente.razonSocial} está en ${cliente.estado}. Reactive primero al cliente.`,
+  );
+}
+
 function must<T>(v: T | undefined, msg: string): T {
   if (v === undefined) throw new Error(msg);
   return v;
@@ -49,9 +66,46 @@ const OPERADOR: Operador = {
   rol: "Administrador",
 };
 
+/** Descarta la copia en memoria y vuelve a leer del almacenamiento (útil en pruebas). */
+export function resetMemoria() {
+  cache = null;
+}
+
 export function resetMockDb() {
   cache = buildSeed();
   persist();
+}
+
+/** Aplica un movimiento ya validado o lo valida si va suelto. No persiste. */
+function aplicarMovimiento(data: NuevoMovimiento) {
+  const d = db();
+  const item = must(
+    d.items.find((x) => x.sku === data.sku),
+    `SKU inexistente: ${data.sku}`,
+  );
+  if (!Number.isInteger(data.cantidad) || data.cantidad <= 0)
+    throw new Error("La cantidad debe ser un entero mayor que 0.");
+  if (data.tipo === "Salida") {
+    const err = validarSalida(stockMap([item], d.movimientos).get(item.sku) ?? 0, data.cantidad);
+    if (err) throw new Error(err);
+  }
+  const m = {
+    id: uid(),
+    fecha: data.fecha ?? new Date().toISOString(),
+    sku: data.sku,
+    tipo: data.tipo,
+    cantidad: data.cantidad,
+    proyecto: data.proyecto || undefined,
+    nota: data.nota || undefined,
+  };
+  d.movimientos.push(m);
+  audit({
+    accion: "inventario.movimiento",
+    entidad: "inventario",
+    entidadId: m.sku,
+    detalle: `${m.tipo} de ${m.cantidad} ${item.unidad}${m.proyecto ? ` · ${m.proyecto}` : ""}${m.nota ? ` · ${m.nota}` : ""}`,
+  });
+  return m;
 }
 
 export const mockApi: Api = {
@@ -140,6 +194,13 @@ export const mockApi: Api = {
         ).length,
       };
     },
+    async hijosReactivables(id) {
+      const d = db();
+      return clone({
+        usuarios: d.usuarios.filter((u) => u.clienteId === id && u.estado === "baja"),
+        proyectos: d.proyectos.filter((p) => p.clienteId === id && p.estado === "baja"),
+      });
+    },
     async cambiarEstado(id, estado, motivo) {
       await delay();
       const d = db();
@@ -198,6 +259,11 @@ export const mockApi: Api = {
     async invitar(data) {
       await delay();
       const d = db();
+      const cliente = d.clientes.find((c) => c.id === data.clienteId);
+      if (cliente && cliente.estado !== "activo")
+        throw new Error(
+          `El cliente ${cliente.razonSocial} está en ${cliente.estado}: no admite usuarios nuevos.`,
+        );
       if (
         d.usuarios.some(
           (u) => u.email.toLowerCase() === data.email.toLowerCase() && u.estado !== "baja",
@@ -244,6 +310,12 @@ export const mockApi: Api = {
         db().usuarios.find((x) => x.id === id),
         "Usuario no encontrado",
       );
+      if (estado === "activo") {
+        exigirClienteActivo(
+          db().clientes.find((c) => c.id === u.clienteId),
+          "al usuario",
+        );
+      }
       const prev = u.estado;
       u.estado = estado;
       const accion =
@@ -307,6 +379,12 @@ export const mockApi: Api = {
         db().proyectos.find((x) => x.id === id),
         "Proyecto no encontrado",
       );
+      if (p.estado === "baja" && estado !== "baja") {
+        exigirClienteActivo(
+          db().clientes.find((c) => c.id === p.clienteId),
+          "el proyecto",
+        );
+      }
       const prev = p.estado;
       p.estado = estado;
       audit({
@@ -332,7 +410,7 @@ export const mockApi: Api = {
     async createItem(data) {
       await delay();
       const d = db();
-      const item = { ...data, sku: siguienteSku(data.categoria, d.items) };
+      const item = { ...data, sku: reservarSku(data.categoria, d.secuencias) };
       d.items.push(item);
       audit({
         accion: "inventario.crear",
@@ -363,9 +441,32 @@ export const mockApi: Api = {
       persist();
       return clone(i);
     },
+    async darDeBaja(sku, motivo) {
+      await delay();
+      if (motivo.trim().length < 3) throw new Error("La baja exige un motivo.");
+      const i = must(
+        db().items.find((x) => x.sku === sku),
+        "Ítem no encontrado",
+      );
+      const prev = i.estado;
+      i.estado = "Baja";
+      audit({
+        accion: "inventario.baja",
+        entidad: "inventario",
+        entidadId: sku,
+        detalle: `${prev} → Baja. Motivo: ${motivo.trim()}`,
+      });
+      persist();
+      return clone(i);
+    },
     async deleteItem(sku, motivo) {
       await delay();
       const d = db();
+      if (motivo.trim().length < 3) throw new Error("La eliminación exige un motivo.");
+      if (d.movimientos.some((m) => m.sku === sku))
+        throw new Error(
+          "El ítem tiene movimientos: no se elimina, se da de baja para conservar su historial.",
+        );
       d.items = d.items.filter((x) => x.sku !== sku);
       audit({
         accion: "inventario.eliminar",
@@ -377,53 +478,27 @@ export const mockApi: Api = {
     },
     async registrarMovimiento(data) {
       await delay();
-      const d = db();
-      const item = must(
-        d.items.find((x) => x.sku === data.sku),
-        `SKU inexistente: ${data.sku}`,
-      );
-      if (!Number.isInteger(data.cantidad) || data.cantidad <= 0)
-        throw new Error("La cantidad debe ser un entero mayor que 0.");
-      if (data.tipo === "Salida") {
-        const err = validarSalida(
-          stockMap([item], d.movimientos).get(item.sku) ?? 0,
-          data.cantidad,
-        );
-        if (err) throw new Error(err);
-      }
-      const m = {
-        id: uid(),
-        fecha: data.fecha ?? new Date().toISOString(),
-        sku: data.sku,
-        tipo: data.tipo,
-        cantidad: data.cantidad,
-        proyecto: data.proyecto || undefined,
-        nota: data.nota || undefined,
-      };
-      d.movimientos.push(m);
-      audit({
-        accion: "inventario.movimiento",
-        entidad: "inventario",
-        entidadId: m.sku,
-        detalle: `${m.tipo} de ${m.cantidad} ${item.unidad}${m.proyecto ? ` · ${m.proyecto}` : ""}${m.nota ? ` · ${m.nota}` : ""}`,
-      });
+      const m = aplicarMovimiento(data);
       persist();
       return clone(m);
     },
     async importarMovimientos(rows: NuevoMovimiento[]) {
-      let n = 0;
-      for (const r of rows) {
-        await mockApi.inventario.registrarMovimiento(r);
-        n++;
-      }
+      await delay();
+      const d = db();
+      const errores = validarLote(d.items, d.movimientos, rows);
+      if (errores.length > 0)
+        throw new Error(
+          `Importación rechazada, no se aplicó nada. ${errores.map((e) => `Fila ${e.fila}: ${e.error}`).join(" · ")}`,
+        );
+      rows.forEach((r) => aplicarMovimiento(r));
       audit({
         accion: "inventario.importar",
         entidad: "inventario",
         entidadId: "csv",
-        detalle: `${n} movimientos importados desde CSV`,
+        detalle: `${rows.length} movimientos importados desde CSV`,
       });
       persist();
-      return n;
+      return rows.length;
     },
     async exportar() {
       const items = clone(db().items);

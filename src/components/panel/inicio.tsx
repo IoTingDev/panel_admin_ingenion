@@ -132,8 +132,8 @@ export function InicioView() {
         />
         <StatCard label="Movimientos (30 días)" value={recientes.length} icon={ArrowLeftRight} />
       </div>
-      <div className="mb-6 grid gap-6 xl:grid-cols-3">
-        <div className="rounded-xl border bg-card p-5 shadow-soft">
+      <div className="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <div className="min-w-0 rounded-xl border bg-card p-5 shadow-soft">
           <h3 className="mb-3 font-semibold">Proyectos por estado</h3>
           <div className="chart-wrap">
             <ResponsiveContainer>
@@ -166,7 +166,7 @@ export function InicioView() {
             ))}
           </div>
         </div>
-        <div className="rounded-xl border bg-card p-5 shadow-soft xl:col-span-2">
+        <div className="min-w-0 rounded-xl border bg-card p-5 shadow-soft xl:col-span-2">
           <h3 className="mb-3 font-semibold">Movimientos de inventario — últimos 30 días</h3>
           <div className="chart-wrap">
             <ResponsiveContainer>
@@ -202,8 +202,8 @@ export function InicioView() {
           </div>
         </div>
       </div>
-      <div className="grid gap-6 xl:grid-cols-3">
-        <div className="rounded-xl border bg-card p-5 shadow-soft">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <div className="min-w-0 rounded-xl border bg-card p-5 shadow-soft">
           <h3 className="mb-3 font-semibold">Clientes por sector</h3>
           <div className="chart-wrap">
             <ResponsiveContainer>
@@ -228,7 +228,7 @@ export function InicioView() {
             </ResponsiveContainer>
           </div>
         </div>
-        <div className="rounded-xl border bg-card p-5 shadow-soft">
+        <div className="min-w-0 rounded-xl border bg-card p-5 shadow-soft">
           <h3 className="mb-4 font-semibold">Alertas activas</h3>
           <div className="space-y-3">
             {bajos.slice(0, 4).map((i) => (

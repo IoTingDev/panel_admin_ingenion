@@ -34,3 +34,16 @@ export function isoDia(iso: string): string {
 export function uid(): string {
   return crypto.randomUUID();
 }
+
+/** Iniciales para el avatar: primera letra del primer y del último nombre (máx. 2). */
+export function iniciales(nombre?: string): string {
+  const partes = (nombre ?? "").trim().split(/\s+/).filter(Boolean);
+  if (partes.length === 0) return "—";
+  const sel = partes.length === 1 ? [partes[0]!] : [partes[0]!, partes[partes.length - 1]!];
+  return sel.map((p) => p[0]!.toUpperCase()).join("");
+}
+
+/** Nombre corto para el encabezado: las dos primeras palabras. */
+export function nombreCorto(nombre?: string): string {
+  return (nombre ?? "").trim().split(/\s+/).slice(0, 2).join(" ");
+}

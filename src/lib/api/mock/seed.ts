@@ -1,4 +1,5 @@
 import inventarioJson from "@/data/inventario_ioting.json";
+import { inicializarSecuencias, type Secuencias } from "@/lib/inventario";
 import type {
   Auditoria,
   Cliente,
@@ -16,6 +17,8 @@ export interface MockDb {
   auditoria: Auditoria[];
   items: ItemInventario[];
   movimientos: MovimientoInventario[];
+  /** Contador por prefijo de SKU; nunca decrece (los SKU eliminados no se reutilizan). */
+  secuencias: Secuencias;
 }
 
 const id = (p: string, n: number) => `${p}-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -104,7 +107,7 @@ export function buildSeed(): MockDb {
       sector: "cacao",
       ciudad: "Apartadó",
       contactoNombre: "Felipe Arango",
-      contactoEmail: "farango@chocourabá.co",
+      contactoEmail: "farango@chocouraba.co",
       contactoTelefono: "+57 311 555 0606",
       estado: "activo",
       creadoEn: diasAtras(60),
@@ -335,5 +338,13 @@ export function buildSeed(): MockDb {
     );
   auditoria.sort((a, b) => b.fecha.localeCompare(a.fecha));
 
-  return { clientes, usuarios, proyectos, auditoria, items, movimientos };
+  return {
+    clientes,
+    usuarios,
+    proyectos,
+    auditoria,
+    items,
+    movimientos,
+    secuencias: inicializarSecuencias(items, movimientos),
+  };
 }

@@ -1,10 +1,11 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { cva } from "class-variance-authority";
-import logo from "@/assets/ioting-logo.png.asset.json";
 import { cn } from "@/lib/utils";
 
+/** Logo local (public/brand). Si el archivo falta o no carga, muestra el nombre en texto. */
 export function Logo({ className }: { className?: string }) {
+  const [fallo, setFallo] = useState(false);
   return (
     <div
       className={cn(
@@ -12,7 +13,24 @@ export function Logo({ className }: { className?: string }) {
         className,
       )}
     >
-      <img src={logo.url} alt="IoTing Dev" className="h-full w-full object-contain" />
+      {fallo ? (
+        <span
+          role="img"
+          aria-label="IoTing Dev"
+          className="text-center font-display text-[10px] font-bold leading-tight text-primary"
+        >
+          IoTing
+          <br />
+          Dev
+        </span>
+      ) : (
+        <img
+          src="/brand/ioting-logo.png"
+          alt="IoTing Dev"
+          className="h-full w-full object-contain"
+          onError={() => setFallo(true)}
+        />
+      )}
     </div>
   );
 }

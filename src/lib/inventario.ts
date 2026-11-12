@@ -89,3 +89,65 @@ export function validarSalida(stock: number, cantidad: number): string | null {
   }
   return null;
 }
+
+/** Prefijo de un SKU ("SEN-012" → "SEN"). */
+export const prefijoDeSku = (sku: string) => sku.slice(0, sku.indexOf("-"));
+const numeroDeSku = (sku: string) => Number.parseInt(sku.slice(sku.indexOf("-") + 1), 10) || 0;
+
+export type Secuencias = Record<string, number>;
+
+/**
+ * Contador por prefijo que nunca decrece. Se siembra con el máximo de los ítems Y de los
+ * movimientos: un SKU eliminado que dejó movimientos huérfanos sigue "ocupado".
+ */
+export function inicializarSecuencias(
+  items: Pick<ItemInventario, "sku">[],
+  movs: Pick<MovimientoInventario, "sku">[],
+): Secuencias {
+  const seq: Secuencias = {};
+  for (const { sku } of [...items, ...movs]) {
+    if (!sku.includes("-")) continue;
+    const p = prefijoDeSku(sku);
+    seq[p] = Math.max(seq[p] ?? 0, numeroDeSku(sku));
+  }
+  return seq;
+}
+
+/** Reserva el siguiente SKU de la categoría y avanza el contador (muta `secuencias`). */
+export function reservarSku(categoria: string, secuencias: Secuencias): string {
+  const prefijo = PREFIJOS[categoria];
+  if (!prefijo) throw new Error(`Categoría sin prefijo: ${categoria}`);
+  const n = (secuencias[prefijo] ?? 0) + 1;
+  secuencias[prefijo] = n;
+  return `${prefijo}-${String(n).padStart(3, "0")}`;
+}
+
+export interface FilaLote {
+  sku: string;
+  tipo: "Entrada" | "Salida";
+  cantidad: number;
+}
+
+/** Valida un lote completo con stock acumulado fila a fila. Devuelve errores por fila (1-based). */
+export function validarLote(
+  items: Pick<ItemInventario, "sku" | "cantidad_inicial">[],
+  movs: MovimientoInventario[],
+  filas: FilaLote[],
+): { fila: number; error: string }[] {
+  const stocks = stockMap(items as ItemInventario[], movs);
+  const errores: { fila: number; error: string }[] = [];
+  filas.forEach((f, i) => {
+    const fila = i + 1;
+    const actual = stocks.get(f.sku);
+    if (actual === undefined)
+      return void errores.push({ fila, error: `SKU inexistente: ${f.sku}` });
+    if (!Number.isInteger(f.cantidad) || f.cantidad <= 0)
+      return void errores.push({ fila, error: "La cantidad debe ser un entero mayor que 0." });
+    if (f.tipo === "Salida") {
+      const err = validarSalida(actual, f.cantidad);
+      if (err) return void errores.push({ fila, error: err });
+    }
+    stocks.set(f.sku, actual + (f.tipo === "Entrada" ? f.cantidad : -f.cantidad));
+  });
+  return errores;
+}

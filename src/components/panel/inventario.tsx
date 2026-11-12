@@ -57,6 +57,33 @@ import {
 import { ConfirmDialog, type ConfirmState } from "./confirm-dialog";
 import { useUi } from "./ui-context";
 
+/**
+ * Con movimientos el ítem no se elimina (dejaría el historial huérfano): se da de baja.
+ * Sin movimientos se elimina definitivamente. En ambos casos con motivo y auditoría.
+ */
+function estadoRetiro(
+  item: Pick<ItemInventario, "sku" | "descripcion">,
+  conMovimientos: boolean,
+  darBaja: (motivo: string) => Promise<unknown>,
+  eliminar: (motivo: string) => Promise<unknown>,
+): ConfirmState {
+  return conMovimientos
+    ? {
+        title: `Dar de baja ${item.sku}`,
+        description: `"${item.descripcion}" tiene movimientos: no se elimina. Sale de los listados y del valor del inventario, y conserva su historial.`,
+        confirmLabel: "Dar de baja",
+        destructive: true,
+        onConfirm: (motivo) => darBaja(motivo) as Promise<void>,
+      }
+    : {
+        title: `Eliminar ${item.sku}`,
+        description: `Se eliminará "${item.descripcion}" del inventario. No tiene movimientos. Queda en auditoría.`,
+        confirmLabel: "Eliminar",
+        destructive: true,
+        onConfirm: (motivo) => eliminar(motivo) as Promise<void>,
+      };
+}
+
 const ESTADOS: EstadoItem[] = ["Disponible", "En uso", "En reparación", "Dañado", "Baja"];
 const GRUPOS: { v: GrupoInventario; l: string }[] = [
   { v: "componentes", l: "Componentes" },
@@ -79,6 +106,8 @@ export function InventarioView() {
   const [importOpen, setImportOpen] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
   const stocks = useMemo(() => stockMap(items, movs), [items, movs]);
+  const skusConMovs = useMemo(() => new Set(movs.map((m) => m.sku)), [movs]);
+  const tieneMovs = (sku: string) => skusConMovs.has(sku);
   const upd = useApiMutation(
     ({ sku, data }: { sku: string; data: Partial<ItemInventario> }) =>
       api.inventario.updateItem(sku, data),
@@ -88,8 +117,14 @@ export function InventarioView() {
     ({ sku, motivo }: { sku: string; motivo: string }) => api.inventario.deleteItem(sku, motivo),
     "Ítem eliminado",
   );
-  const delGrupo = items.filter((i) => grupoDeSku(i.sku) === grupo);
-  let rows = delGrupo.filter(
+  const baja = useApiMutation(
+    ({ sku, motivo }: { sku: string; motivo: string }) => api.inventario.darDeBaja(sku, motivo),
+    "Ítem dado de baja",
+  );
+  const delGrupoTodos = items.filter((i) => grupoDeSku(i.sku) === grupo);
+  // Los ítems dados de baja salen de listados y cifras; solo reaparecen al filtrar por «Baja».
+  const delGrupo = delGrupoTodos.filter((i) => i.estado !== "Baja");
+  let rows = (est === "Baja" ? delGrupoTodos : delGrupo).filter(
     (i) =>
       (!cat || i.categoria === cat) &&
       (!sub || i.subcategoria === sub) &&
@@ -156,7 +191,7 @@ export function InventarioView() {
           setSub("");
         }}
       >
-        <TabsList className="mb-5">
+        <TabsList className="mb-5 max-w-full justify-start overflow-x-auto">
           {GRUPOS.map((g) => (
             <TabsTrigger key={g.v} value={g.v}>
               {g.l}
@@ -314,15 +349,16 @@ export function InventarioView() {
                       <Button
                         size="icon"
                         variant="ghost"
-                        title="Eliminar"
+                        title={tieneMovs(i.sku) ? "Dar de baja" : "Eliminar"}
                         onClick={() =>
-                          setConfirm({
-                            title: `Eliminar ${i.sku}`,
-                            description: `Se eliminará "${i.descripcion}" del inventario. Su historial de movimientos queda en auditoría.`,
-                            confirmLabel: "Eliminar",
-                            destructive: true,
-                            onConfirm: (motivo) => del.mutateAsync({ sku: i.sku, motivo }),
-                          })
+                          setConfirm(
+                            estadoRetiro(
+                              i,
+                              tieneMovs(i.sku),
+                              (motivo) => baja.mutateAsync({ sku: i.sku, motivo }),
+                              (motivo) => del.mutateAsync({ sku: i.sku, motivo }),
+                            ),
+                          )
                         }
                       >
                         <Trash2 className="text-destructive" />
@@ -570,6 +606,10 @@ export function ItemDetail({ sku }: { sku: string }) {
     (motivo: string) => api.inventario.deleteItem(sku, motivo),
     "Ítem eliminado",
   );
+  const baja = useApiMutation(
+    (motivo: string) => api.inventario.darDeBaja(sku, motivo),
+    "Ítem dado de baja",
+  );
   if (isLoading) return <Loading />;
   if (!item)
     return (
@@ -618,25 +658,29 @@ export function ItemDetail({ sku }: { sku: string }) {
               <ArrowLeftRight />
               Registrar movimiento
             </Button>
-            <Button
-              variant="destructive"
-              onClick={() =>
-                setConfirm({
-                  title: `Eliminar ${sku}`,
-                  description:
-                    "El ítem desaparecerá del inventario. Esta acción queda en auditoría.",
-                  confirmLabel: "Eliminar",
-                  destructive: true,
-                  onConfirm: async (m) => {
-                    await del.mutateAsync(m);
-                    await navigate({ to: "/inventario" });
-                  },
-                })
-              }
-            >
-              <Trash2 />
-              Eliminar
-            </Button>
+            {item.estado !== "Baja" && (
+              <Button
+                variant="destructive"
+                onClick={() =>
+                  setConfirm(
+                    estadoRetiro(
+                      item,
+                      movs.some((m) => m.sku === sku),
+                      async (m) => {
+                        await baja.mutateAsync(m);
+                      },
+                      async (m) => {
+                        await del.mutateAsync(m);
+                        await navigate({ to: "/inventario" });
+                      },
+                    ),
+                  )
+                }
+              >
+                <Trash2 />
+                {movs.some((m) => m.sku === sku) ? "Dar de baja" : "Eliminar"}
+              </Button>
+            )}
           </>
         }
       />

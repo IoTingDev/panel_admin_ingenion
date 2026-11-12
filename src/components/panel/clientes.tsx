@@ -12,7 +12,7 @@ import {
   MapPin,
   Phone,
 } from "lucide-react";
-import { api, type Cliente, type Estado } from "@/lib/api";
+import { api, type Cliente, type Estado, type HijosReactivables } from "@/lib/api";
 import {
   useClientes,
   useUsuarios,
@@ -32,7 +32,8 @@ import {
   SortHead,
   Loading,
 } from "./data-tools";
-import { ClienteSheet } from "./forms";
+import { ClienteSheet } from "./cliente-sheet";
+import { ReactivarHijosDialog } from "./reactivar-hijos";
 import { ConfirmDialog, type ConfirmState } from "./confirm-dialog";
 import { UsuariosView } from "./usuarios";
 import { ProyectosView } from "./proyectos";
@@ -183,6 +184,7 @@ export function ClienteDetail({ id }: { id: string }) {
   const c = clientes.find((x) => x.id === id);
   const [edit, setEdit] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
+  const [hijos, setHijos] = useState<HijosReactivables | null>(null);
   const mutation = useApiMutation(
     ({ estado, motivo }: { estado: Estado; motivo: string }) =>
       api.clientes.cambiarEstado(id, estado, motivo),
@@ -203,7 +205,13 @@ export function ClienteDetail({ id }: { id: string }) {
           : "El estado del cliente cambiará. Esta acción queda registrada en auditoría.",
       confirmLabel: "Confirmar",
       destructive: estado === "baja",
-      onConfirm: (motivo) => mutation.mutateAsync({ estado, motivo }),
+      onConfirm: async (motivo) => {
+        await mutation.mutateAsync({ estado, motivo });
+        if (estado === "activo") {
+          const h = await api.clientes.hijosReactivables(id);
+          if (h.usuarios.length + h.proyectos.length > 0) setHijos(h);
+        }
+      },
     });
   };
   if (isLoading) return <Loading />;
@@ -249,7 +257,7 @@ export function ClienteDetail({ id }: { id: string }) {
         }
       />
       <Tabs defaultValue="resumen">
-        <TabsList>
+        <TabsList className="max-w-full justify-start overflow-x-auto">
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
           <TabsTrigger value="usuarios">Usuarios</TabsTrigger>
           <TabsTrigger value="proyectos">Proyectos</TabsTrigger>
@@ -305,6 +313,8 @@ export function ClienteDetail({ id }: { id: string }) {
           <ActivityRows rows={auditoria.filter((a) => a.entidadId === id)} />
         </TabsContent>
       </Tabs>
+      <ReactivarHijosDialog clienteId={id} hijos={hijos} onClose={() => setHijos(null)} />
+      <ReactivarHijosDialog clienteId={id} hijos={hijos} onClose={() => setHijos(null)} />
       <ClienteSheet open={edit} onClose={() => setEdit(false)} cliente={c} />
       <ConfirmDialog state={confirm} onClose={() => setConfirm(null)} />
     </>

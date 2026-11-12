@@ -94,12 +94,25 @@ export interface ImpactoBaja {
   proyectos: number;
 }
 
+/** Hijos de un cliente que siguen en baja y se pueden reactivar uno a uno. */
+export interface HijosReactivables {
+  usuarios: UsuarioCliente[];
+  proyectos: Proyecto[];
+}
+
+export interface ErrorFilaLote {
+  /** Número de fila del lote, empezando en 1. */
+  fila: number;
+  error: string;
+}
+
 export interface ClientesApi {
   list(): Promise<Cliente[]>;
   get(id: string): Promise<Cliente | null>;
   create(data: Omit<Cliente, "id" | "creadoEn" | "estado">): Promise<Cliente>;
   update(id: string, data: Partial<Omit<Cliente, "id" | "creadoEn">>): Promise<Cliente>;
   impactoBaja(id: string): Promise<ImpactoBaja>;
+  hijosReactivables(id: string): Promise<HijosReactivables>;
   cambiarEstado(id: string, estado: Estado, motivo: string): Promise<Cliente>;
 }
 
@@ -134,8 +147,12 @@ export interface InventarioApi {
   listMovimientos(): Promise<MovimientoInventario[]>;
   createItem(data: Omit<ItemInventario, "sku">): Promise<ItemInventario>;
   updateItem(sku: string, data: Partial<Omit<ItemInventario, "sku">>): Promise<ItemInventario>;
+  /** Eliminación definitiva: solo si el ítem no tiene movimientos. Exige motivo. */
   deleteItem(sku: string, motivo: string): Promise<void>;
+  /** Baja lógica: conserva el historial, sale de listados y del valor. Exige motivo. */
+  darDeBaja(sku: string, motivo: string): Promise<ItemInventario>;
   registrarMovimiento(data: NuevoMovimiento): Promise<MovimientoInventario>;
+  /** Todo o nada: valida el lote completo (stock acumulado) antes de aplicar. */
   importarMovimientos(data: NuevoMovimiento[]): Promise<number>;
   exportar(): Promise<InventarioExport>;
 }

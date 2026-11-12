@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { PageHeader, IconBox, StatusBadge, EmptyState } from "./common";
 import { DataFrame, SearchInput, FilterSelect, usePagination, Loading } from "./data-tools";
-import { ProyectoSheet } from "./forms";
+import { ProyectoSheet } from "./proyecto-sheet";
 import { ConfirmDialog, type ConfirmState } from "./confirm-dialog";
 import { useUi } from "./ui-context";
 
@@ -293,7 +293,7 @@ export function ProyectoDetail({ id }: { id: string }) {
         }
       />
       <Tabs defaultValue="resumen">
-        <TabsList>
+        <TabsList className="max-w-full justify-start overflow-x-auto">
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
           <TabsTrigger value="materiales">Materiales de inventario</TabsTrigger>
           <TabsTrigger value="actividad">Actividad</TabsTrigger>

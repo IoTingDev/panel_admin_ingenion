@@ -18,8 +18,10 @@ import {
   Plus,
   Command as CommandIcon,
 } from "lucide-react";
-import { api } from "@/lib/api";
-import { useMe, useClientes, useItems, useProyectos } from "@/hooks/use-api";
+import { api, API_MODE } from "@/lib/api";
+import { derivarAvisos } from "@/lib/avisos";
+import { iniciales, nombreCorto } from "@/lib/format";
+import { useMe, useClientes, useItems, useMovimientos, useProyectos } from "@/hooks/use-api";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -67,6 +69,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobile, setMobile] = useState(false);
   const { data: me } = useMe();
+  const { data: proyectos = [] } = useProyectos();
+  const { data: clientes = [] } = useClientes();
+  const { data: items = [] } = useItems();
+  const { data: movimientos = [] } = useMovimientos();
+  const avisos = derivarAvisos({ proyectos, clientes, items, movimientos });
   const path = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -154,7 +161,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <>
               <p className="mb-1 flex items-center gap-2 text-xs">
                 <span className="size-1.5 rounded-full bg-success" />
-                Operación en línea
+                {API_MODE === "api" ? "Operación en línea" : "Datos locales (simulados)"}
               </p>
               <p className="text-[10px] text-sidebar-foreground/45">IoTing Dev © 2026</p>
             </>
@@ -199,19 +206,26 @@ export function AppShell({ children }: { children: ReactNode }) {
             <PopoverTrigger asChild>
               <Button variant="ghost" size="icon" aria-label="Notificaciones" className="relative">
                 <Bell />
-                <span className="absolute right-2 top-2 size-1.5 rounded-full bg-destructive" />
+                {avisos.length > 0 && (
+                  <span className="absolute right-2 top-2 size-1.5 rounded-full bg-destructive" />
+                )}
               </Button>
             </PopoverTrigger>
             <PopoverContent align="end">
               <h3 className="mb-3 font-semibold">Notificaciones</h3>
-              <Link to="/proyectos" className="block border-b py-2 text-sm">
-                2 proyectos pausados
-                <ArrowRight className="float-right size-4" />
-              </Link>
-              <Link to="/clientes" className="block py-2 text-sm">
-                1 cliente suspendido
-                <ArrowRight className="float-right size-4" />
-              </Link>
+              {avisos.length === 0 && (
+                <p className="py-2 text-sm text-muted-foreground">Sin avisos por ahora.</p>
+              )}
+              {avisos.map((a, i) => (
+                <Link
+                  key={a.clave}
+                  to={a.to}
+                  className={cn("block py-2 text-sm", i < avisos.length - 1 && "border-b")}
+                >
+                  {a.texto}
+                  <ArrowRight className="float-right size-4" />
+                </Link>
+              ))}
             </PopoverContent>
           </Popover>
           <div className="mx-1 h-8 border-l" />
@@ -219,12 +233,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="gap-2 px-0 sm:px-2">
                 <span className="flex size-9 items-center justify-center rounded-full bg-primary-soft font-display text-xs text-primary">
-                  JV
+                  {iniciales(me?.nombre)}
                 </span>
                 <span className="hidden text-left md:block">
-                  <span className="block text-xs font-semibold">Juan Camilo</span>
+                  <span className="block text-xs font-semibold">
+                    {nombreCorto(me?.nombre) || "—"}
+                  </span>
                   <span className="block text-[10px] font-normal text-muted-foreground">
-                    {me?.rol ?? "Administrador"}
+                    {me?.rol ?? ""}
                   </span>
                 </span>
                 <ChevronDown className="hidden size-3 text-muted-foreground sm:block" />
