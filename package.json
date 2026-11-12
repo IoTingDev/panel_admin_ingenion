@@ -11,7 +11,10 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "format:check": "prettier --check .",
+    "test:e2e": "playwright test tests/e2e",
+    "test:visual": "playwright test tests/visual"
   },
   "overrides": {
     "rolldown": "1.2.1"
