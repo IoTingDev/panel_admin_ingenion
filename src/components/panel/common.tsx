@@ -12,7 +12,7 @@ export function Logo({ className }: { className?: string }) {
   );
 }
 
-export function PageHeader({ eyebrow, title, subtitle, actions }: { eyebrow: string; title: ReactNode; subtitle?: string; actions?: ReactNode }) {
+export function PageHeader({ eyebrow, title, subtitle, actions }: { eyebrow: string; title: ReactNode; subtitle?: string | undefined; actions?: ReactNode | undefined }) {
   return (
     <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between animate-fade-in">
       <div>
@@ -107,7 +107,7 @@ export function IconBox({ icon: Icon }: { icon: LucideIcon }) {
   );
 }
 
-export function EmptyState({ icon: Icon, title, text, action }: { icon: LucideIcon; title: string; text?: string; action?: ReactNode }) {
+export function EmptyState({ icon: Icon, title, text, action }: { icon: LucideIcon; title: string; text?: string | undefined; action?: ReactNode | undefined }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-soft text-primary"><Icon className="h-5 w-5" /></div>
@@ -118,7 +118,7 @@ export function EmptyState({ icon: Icon, title, text, action }: { icon: LucideIc
   );
 }
 
-export function Panel({ title, children, className, actions }: { title?: string; children: ReactNode; className?: string; actions?: ReactNode }) {
+export function Panel({ title, children, className, actions }: { title?: string | undefined; children: ReactNode; className?: string | undefined; actions?: ReactNode | undefined }) {
   return (
     <section className={cn("border-t bg-card/40 py-5", className)}>
       {(title || actions) && (

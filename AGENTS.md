@@ -28,3 +28,7 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Architecture (this project)
+- IoTing admin panel: all data access goes through src/lib/api/ interfaces (mock implementation persists in localStorage); VITE_API_MODE is the single switch point for a future HTTP backend.
+- Private screens live under src/routes/_panel/ (ssr:false, localStorage session guard); /login is public. Never store inventory stock counts — always compute them as initial + entries - exits.

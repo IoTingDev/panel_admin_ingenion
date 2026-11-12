@@ -9,50 +9,290 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as PanelRouteRouteImport } from './routes/_panel/route'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as PanelIndexRouteImport } from './routes/_panel/index'
+import { Route as PanelAuditoriaRouteImport } from './routes/_panel/auditoria'
+import { Route as PanelConfiguracionRouteImport } from './routes/_panel/configuracion'
+import { Route as PanelUsuariosRouteImport } from './routes/_panel/usuarios'
+import { Route as PanelClientesIndexRouteImport } from './routes/_panel/clientes/index'
+import { Route as PanelClientesIdRouteImport } from './routes/_panel/clientes/$id'
+import { Route as PanelInventarioIndexRouteImport } from './routes/_panel/inventario/index'
+import { Route as PanelInventarioSkuRouteImport } from './routes/_panel/inventario/$sku'
+import { Route as PanelProyectosIndexRouteImport } from './routes/_panel/proyectos/index'
+import { Route as PanelProyectosIdRouteImport } from './routes/_panel/proyectos/$id'
 
-const IndexRoute = IndexRouteImport.update({
+const PanelRouteRoute = PanelRouteRouteImport.update({
+  id: '/_panel',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PanelIndexRoute = PanelIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => PanelRouteRoute,
+} as any)
+const PanelAuditoriaRoute = PanelAuditoriaRouteImport.update({
+  id: '/auditoria',
+  path: '/auditoria',
+  getParentRoute: () => PanelRouteRoute,
+} as any)
+const PanelConfiguracionRoute = PanelConfiguracionRouteImport.update({
+  id: '/configuracion',
+  path: '/configuracion',
+  getParentRoute: () => PanelRouteRoute,
+} as any)
+const PanelUsuariosRoute = PanelUsuariosRouteImport.update({
+  id: '/usuarios',
+  path: '/usuarios',
+  getParentRoute: () => PanelRouteRoute,
+} as any)
+const PanelClientesIndexRoute = PanelClientesIndexRouteImport.update({
+  id: '/clientes/',
+  path: '/clientes/',
+  getParentRoute: () => PanelRouteRoute,
+} as any)
+const PanelClientesIdRoute = PanelClientesIdRouteImport.update({
+  id: '/clientes/$id',
+  path: '/clientes/$id',
+  getParentRoute: () => PanelRouteRoute,
+} as any)
+const PanelInventarioIndexRoute = PanelInventarioIndexRouteImport.update({
+  id: '/inventario/',
+  path: '/inventario/',
+  getParentRoute: () => PanelRouteRoute,
+} as any)
+const PanelInventarioSkuRoute = PanelInventarioSkuRouteImport.update({
+  id: '/inventario/$sku',
+  path: '/inventario/$sku',
+  getParentRoute: () => PanelRouteRoute,
+} as any)
+const PanelProyectosIndexRoute = PanelProyectosIndexRouteImport.update({
+  id: '/proyectos/',
+  path: '/proyectos/',
+  getParentRoute: () => PanelRouteRoute,
+} as any)
+const PanelProyectosIdRoute = PanelProyectosIdRouteImport.update({
+  id: '/proyectos/$id',
+  path: '/proyectos/$id',
+  getParentRoute: () => PanelRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof PanelIndexRoute
+  '/login': typeof LoginRoute
+  '/auditoria': typeof PanelAuditoriaRoute
+  '/configuracion': typeof PanelConfiguracionRoute
+  '/usuarios': typeof PanelUsuariosRoute
+  '/clientes/$id': typeof PanelClientesIdRoute
+  '/inventario/$sku': typeof PanelInventarioSkuRoute
+  '/proyectos/$id': typeof PanelProyectosIdRoute
+  '/clientes/': typeof PanelClientesIndexRoute
+  '/inventario/': typeof PanelInventarioIndexRoute
+  '/proyectos/': typeof PanelProyectosIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/auditoria': typeof PanelAuditoriaRoute
+  '/configuracion': typeof PanelConfiguracionRoute
+  '/usuarios': typeof PanelUsuariosRoute
+  '/': typeof PanelIndexRoute
+  '/clientes/$id': typeof PanelClientesIdRoute
+  '/inventario/$sku': typeof PanelInventarioSkuRoute
+  '/proyectos/$id': typeof PanelProyectosIdRoute
+  '/clientes': typeof PanelClientesIndexRoute
+  '/inventario': typeof PanelInventarioIndexRoute
+  '/proyectos': typeof PanelProyectosIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_panel': typeof PanelRouteRouteWithChildren
+  '/login': typeof LoginRoute
+  '/_panel/auditoria': typeof PanelAuditoriaRoute
+  '/_panel/configuracion': typeof PanelConfiguracionRoute
+  '/_panel/usuarios': typeof PanelUsuariosRoute
+  '/_panel/': typeof PanelIndexRoute
+  '/_panel/clientes/$id': typeof PanelClientesIdRoute
+  '/_panel/inventario/$sku': typeof PanelInventarioSkuRoute
+  '/_panel/proyectos/$id': typeof PanelProyectosIdRoute
+  '/_panel/clientes/': typeof PanelClientesIndexRoute
+  '/_panel/inventario/': typeof PanelInventarioIndexRoute
+  '/_panel/proyectos/': typeof PanelProyectosIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/auditoria'
+    | '/configuracion'
+    | '/usuarios'
+    | '/clientes/$id'
+    | '/inventario/$sku'
+    | '/proyectos/$id'
+    | '/clientes/'
+    | '/inventario/'
+    | '/proyectos/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/login'
+    | '/auditoria'
+    | '/configuracion'
+    | '/usuarios'
+    | '/'
+    | '/clientes/$id'
+    | '/inventario/$sku'
+    | '/proyectos/$id'
+    | '/clientes'
+    | '/inventario'
+    | '/proyectos'
+  id:
+    | '__root__'
+    | '/_panel'
+    | '/login'
+    | '/_panel/auditoria'
+    | '/_panel/configuracion'
+    | '/_panel/usuarios'
+    | '/_panel/'
+    | '/_panel/clientes/$id'
+    | '/_panel/inventario/$sku'
+    | '/_panel/proyectos/$id'
+    | '/_panel/clientes/'
+    | '/_panel/inventario/'
+    | '/_panel/proyectos/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  PanelRouteRoute: typeof PanelRouteRouteWithChildren
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/_panel': {
+      id: '/_panel'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof PanelRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_panel/': {
+      id: '/_panel/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof PanelIndexRouteImport
+      parentRoute: typeof PanelRouteRoute
+    }
+    '/_panel/auditoria': {
+      id: '/_panel/auditoria'
+      path: '/auditoria'
+      fullPath: '/auditoria'
+      preLoaderRoute: typeof PanelAuditoriaRouteImport
+      parentRoute: typeof PanelRouteRoute
+    }
+    '/_panel/configuracion': {
+      id: '/_panel/configuracion'
+      path: '/configuracion'
+      fullPath: '/configuracion'
+      preLoaderRoute: typeof PanelConfiguracionRouteImport
+      parentRoute: typeof PanelRouteRoute
+    }
+    '/_panel/usuarios': {
+      id: '/_panel/usuarios'
+      path: '/usuarios'
+      fullPath: '/usuarios'
+      preLoaderRoute: typeof PanelUsuariosRouteImport
+      parentRoute: typeof PanelRouteRoute
+    }
+    '/_panel/clientes/': {
+      id: '/_panel/clientes/'
+      path: '/clientes'
+      fullPath: '/clientes/'
+      preLoaderRoute: typeof PanelClientesIndexRouteImport
+      parentRoute: typeof PanelRouteRoute
+    }
+    '/_panel/clientes/$id': {
+      id: '/_panel/clientes/$id'
+      path: '/clientes/$id'
+      fullPath: '/clientes/$id'
+      preLoaderRoute: typeof PanelClientesIdRouteImport
+      parentRoute: typeof PanelRouteRoute
+    }
+    '/_panel/inventario/': {
+      id: '/_panel/inventario/'
+      path: '/inventario'
+      fullPath: '/inventario/'
+      preLoaderRoute: typeof PanelInventarioIndexRouteImport
+      parentRoute: typeof PanelRouteRoute
+    }
+    '/_panel/inventario/$sku': {
+      id: '/_panel/inventario/$sku'
+      path: '/inventario/$sku'
+      fullPath: '/inventario/$sku'
+      preLoaderRoute: typeof PanelInventarioSkuRouteImport
+      parentRoute: typeof PanelRouteRoute
+    }
+    '/_panel/proyectos/': {
+      id: '/_panel/proyectos/'
+      path: '/proyectos'
+      fullPath: '/proyectos/'
+      preLoaderRoute: typeof PanelProyectosIndexRouteImport
+      parentRoute: typeof PanelRouteRoute
+    }
+    '/_panel/proyectos/$id': {
+      id: '/_panel/proyectos/$id'
+      path: '/proyectos/$id'
+      fullPath: '/proyectos/$id'
+      preLoaderRoute: typeof PanelProyectosIdRouteImport
+      parentRoute: typeof PanelRouteRoute
     }
   }
 }
 
+interface PanelRouteRouteChildren {
+  PanelAuditoriaRoute: typeof PanelAuditoriaRoute
+  PanelConfiguracionRoute: typeof PanelConfiguracionRoute
+  PanelUsuariosRoute: typeof PanelUsuariosRoute
+  PanelIndexRoute: typeof PanelIndexRoute
+  PanelClientesIdRoute: typeof PanelClientesIdRoute
+  PanelInventarioSkuRoute: typeof PanelInventarioSkuRoute
+  PanelProyectosIdRoute: typeof PanelProyectosIdRoute
+  PanelClientesIndexRoute: typeof PanelClientesIndexRoute
+  PanelInventarioIndexRoute: typeof PanelInventarioIndexRoute
+  PanelProyectosIndexRoute: typeof PanelProyectosIndexRoute
+}
+
+const PanelRouteRouteChildren: PanelRouteRouteChildren = {
+  PanelAuditoriaRoute: PanelAuditoriaRoute,
+  PanelConfiguracionRoute: PanelConfiguracionRoute,
+  PanelUsuariosRoute: PanelUsuariosRoute,
+  PanelIndexRoute: PanelIndexRoute,
+  PanelClientesIdRoute: PanelClientesIdRoute,
+  PanelInventarioSkuRoute: PanelInventarioSkuRoute,
+  PanelProyectosIdRoute: PanelProyectosIdRoute,
+  PanelClientesIndexRoute: PanelClientesIndexRoute,
+  PanelInventarioIndexRoute: PanelInventarioIndexRoute,
+  PanelProyectosIndexRoute: PanelProyectosIndexRoute,
+}
+
+const PanelRouteRouteWithChildren = PanelRouteRoute._addFileChildren(
+  PanelRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  PanelRouteRoute: PanelRouteRouteWithChildren,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
