@@ -30,7 +30,8 @@ if (!URL_API) {
   ejecutarSuiteContrato(
     "backend real",
     async () => {
-      const ambito = crypto.randomUUID();
+      // Ámbito SINTÉTICO: el backend solo admite UUID con el prefijo 7e57 en los entornos de prueba.
+      const ambito = `7e57${crypto.randomUUID().slice(4)}`;
       const cabeceras = (): Record<string, string> => ({
         "x-panel-ambito-prueba": ambito,
         ...(COOKIE ? { Cookie: COOKIE } : {}),
