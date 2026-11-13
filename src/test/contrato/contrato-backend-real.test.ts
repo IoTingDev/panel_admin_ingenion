@@ -59,8 +59,14 @@ if (!URL_API) {
       return {
         api,
         reiniciar: async () => {
-          const r = await fetchPanel(`${base}/v1/__prueba__/reiniciar`, { method: "POST", body: "{}" });
-          if (!r.ok) throw new Error(`No se pudo sembrar el ámbito de prueba: HTTP ${r.status} ${await r.text()}`);
+          const r = await fetchPanel(`${base}/v1/__prueba__/reiniciar`, {
+            method: "POST",
+            body: "{}",
+          });
+          if (!r.ok)
+            throw new Error(
+              `No se pudo sembrar el ámbito de prueba: HTTP ${r.status} ${await r.text()}`,
+            );
         },
       };
     },
