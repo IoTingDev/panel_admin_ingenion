@@ -35,9 +35,15 @@ export function parseCsvValores(text: string): FilaValores[] {
     const cols = splitCsvLine(linea);
     const get = (k: string) => (cols[headers.indexOf(k)] ?? "").trim();
     const cantidad = enteroDeCelda(get("cantidad_inicial"));
+    const grupoCrudo = get("grupo_propuesto").toLowerCase();
+    // El grupo «seguridad» ya no existe (v3): un CSV viejo se acepta y se toma como «componentes».
+    const reasignado = grupoCrudo === "seguridad";
     return {
       sku: get("sku"),
-      grupo: get("grupo_propuesto").toLowerCase() as GrupoInventario,
+      grupo: (reasignado ? "componentes" : grupoCrudo) as GrupoInventario,
+      ...(reasignado
+        ? { aviso: "El grupo «seguridad» ya no existe: se toma como «componentes»." }
+        : {}),
       categoria: get("categoria_propuesta"),
       cantidad_inicial: cantidad === null ? Number.NaN : cantidad,
       anioCompra: enteroDeCelda(get("anio_compra")),

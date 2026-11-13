@@ -59,7 +59,7 @@ export function ProyectosView({ clienteId = "" }: { clienteId?: string }) {
     <>
       <PageHeader
         eyebrow="Gestión"
-        title="Proyectos"
+        title="Proyectos I+D+I"
         subtitle="Soluciones IoT, de la idea a la operación."
         actions={
           <Button onClick={() => setOpen(true)}>
@@ -280,11 +280,11 @@ export function ProyectoDetail({ id }: { id: string }) {
       <Button asChild variant="link" className="mb-4 px-0">
         <Link to="/proyectos">
           <ArrowLeft />
-          Proyectos
+          Proyectos I+D+I
         </Link>
       </Button>
       <PageHeader
-        eyebrow="Gestión / Proyectos"
+        eyebrow="Gestión / Proyectos I+D+I"
         title={p.nombre}
         subtitle={clientes.find((c) => c.id === p.clienteId)?.razonSocial}
         actions={

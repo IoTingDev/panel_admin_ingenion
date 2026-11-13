@@ -6,7 +6,7 @@ export type TipoTrabajo = "cctv" | "alarmas" | "telecom" | "mantenimiento" | "in
 export type EstadoTrabajo = "programado" | "en_curso" | "completado" | "cancelado";
 export type EstadoItem = "Disponible" | "En uso" | "En reparación" | "Dañado" | "Baja";
 export type TipoMovimiento = "Entrada" | "Salida";
-export type GrupoInventario = "componentes" | "herramientas" | "equipos" | "seguridad";
+export type GrupoInventario = "componentes" | "herramientas" | "equipos";
 export type DestinoTipo = "proyecto" | "trabajo";
 
 export interface Cliente {
@@ -136,7 +136,6 @@ export interface InventarioExport {
   componentes: ItemInventario[];
   herramientas: ItemInventario[];
   equipos: ItemInventario[];
-  seguridad: ItemInventario[];
 }
 
 export interface ParametrosDepreciacion {
@@ -167,6 +166,8 @@ export interface FilaValores {
   cantidad_inicial: number;
   anioCompra: number | null;
   valorUnitario: number | null;
+  /** Aviso no bloqueante de la lectura del CSV (p. ej. un grupo antiguo que se reasignó). */
+  aviso?: string | undefined;
 }
 
 export interface Operador {

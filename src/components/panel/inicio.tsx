@@ -187,7 +187,7 @@ export function InicioView() {
         <StatCard label="Movimientos (30 días)" value={recientes.length} icon={ArrowLeftRight} />
       </div>
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Trabajos en curso" value={enCurso.length} icon={Wrench} tone="warning" />
+        <StatCard label="Servicios en curso" value={enCurso.length} icon={Wrench} tone="warning" />
         <StatCard
           label="Programados esta semana"
           value={programadosSemana.length}
@@ -195,7 +195,7 @@ export function InicioView() {
           tone="info"
         />
         <StatCard
-          label="Trabajos vencidos sin iniciar"
+          label="Servicios vencidos sin iniciar"
           value={vencidos.length}
           icon={AlertTriangle}
           tone={vencidos.length ? "destructive" : "success"}
@@ -343,11 +343,11 @@ export function InicioView() {
             {vencidos.map((x) => (
               <Link
                 key={x.id}
-                to="/trabajos/$id"
+                to="/servicios-tecnicos/$id"
                 params={{ id: x.id }}
                 className="block rounded-lg border border-warning/30 bg-warning/15 p-3 text-sm"
               >
-                <span className="font-medium">Trabajo vencido</span> · {x.codigo} {x.titulo}
+                <span className="font-medium">Servicio vencido</span> · {x.codigo} {x.titulo}
               </Link>
             ))}
             {suspendidos.map((x) => (

@@ -10,7 +10,7 @@ import { esStockBajo, hoyBogota, stockMap } from "@/lib/inventario";
 export interface Aviso {
   clave: string;
   texto: string;
-  to: "/proyectos" | "/clientes" | "/inventario" | "/trabajos";
+  to: "/proyectos" | "/clientes" | "/inventario" | "/servicios-tecnicos";
 }
 
 const plural = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`;
@@ -47,8 +47,8 @@ export function derivarAvisos(d: {
   if (vencidos > 0)
     avisos.push({
       clave: "trabajos-vencidos",
-      texto: plural(vencidos, "trabajo vencido sin iniciar", "trabajos vencidos sin iniciar"),
-      to: "/trabajos",
+      texto: plural(vencidos, "servicio vencido sin iniciar", "servicios vencidos sin iniciar"),
+      to: "/servicios-tecnicos",
     });
   const activos = d.items.filter((i) => i.estado !== "Baja");
   const stocks = stockMap(activos, d.movimientos);

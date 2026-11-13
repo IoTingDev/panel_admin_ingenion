@@ -1,11 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { TrabajosView } from "@/components/panel/trabajos";
-import { pageHead } from "@/lib/meta";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+/** Ruta anterior (v2): se conserva solo para redirigir a /servicios-tecnicos. */
 export const Route = createFileRoute("/_panel/trabajos/")({
-  head: () =>
-    pageHead(
-      "Trabajos técnicos",
-      "CCTV, alarmas, telecomunicaciones, mantenimiento e instalación de IoTing Dev.",
-    ),
-  component: TrabajosView,
+  beforeLoad: () => {
+    throw redirect({ to: "/servicios-tecnicos", replace: true });
+  },
 });

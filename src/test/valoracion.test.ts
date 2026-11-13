@@ -11,7 +11,7 @@ import {
 import type { ItemInventario, MovimientoInventario } from "@/lib/api/types";
 
 const params: ParametrosDepreciacion = {
-  aniosPorGrupo: { componentes: null, herramientas: 5, equipos: 5, seguridad: null },
+  aniosPorGrupo: { componentes: null, herramientas: 5, equipos: 5 },
   residualPct: 10,
 };
 
@@ -65,11 +65,10 @@ describe("depreciación lineal con valor residual", () => {
     expect(factorDepreciacion(item({ anioCompra: 2017 }), 2026, params)).toBeCloseTo(0.1, 10);
     expect(valorEstimado(item({ anioCompra: 2017 }), 2, 2026, params)).toBe(20_000);
   });
-  it("componentes y seguridad no se deprecian por defecto", () => {
+  it("los componentes no se deprecian por defecto", () => {
     const c = item({ grupo: "componentes", anioCompra: 2010 });
     expect(factorDepreciacion(c, 2026, params)).toBe(1);
     expect(valorEstimado(c, 2, 2026, params)).toBe(200_000);
-    expect(factorDepreciacion(item({ grupo: "seguridad" }), 2026, params)).toBe(1);
   });
   it("la vida útil propia del ítem manda sobre la del grupo", () => {
     expect(factorDepreciacion(item({ vidaUtilAnios: 10 }), 2026, params)).toBeCloseTo(0.8, 10);

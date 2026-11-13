@@ -1,7 +1,7 @@
 // Fase 2.2 — migración de la base guardada v1 → v2.
 import { beforeEach, describe, expect, it } from "vitest";
-import { migrarV1aV2 } from "@/lib/api/mock/migracion";
-import { buildSeed, type MockDb } from "@/lib/api/mock/seed";
+import { migrarV1aV2 as migrarV1aV2Real } from "@/lib/api/mock/migracion";
+import { buildSeed, type MockDb as MockDbActual } from "@/lib/api/mock/seed";
 import { mockApi, resetMemoria } from "@/lib/api/mock";
 
 /**
@@ -9,7 +9,36 @@ import { mockApi, resetMemoria } from "@/lib/api/mock";
  * categorías viejas («Cableado» para todo CAB-*, «Equipos» para EQP-008/009) y sin contador.
  * Las expectativas de abajo son números literales del encargo, no calculados con el código.
  */
-function comoV1(db: MockDb): Record<string, unknown> {
+/** Forma de la base en la etapa v2 (cuatro grupos): esta etapa de la cadena se sigue probando. */
+interface MockDb {
+  items: {
+    sku: string;
+    grupo: string;
+    categoria: string;
+    cantidad_inicial: number;
+    ubicacion: string;
+  }[];
+  movimientos: {
+    id: string;
+    sku: string;
+    destinoTipo?: string;
+    destinoId?: string;
+    proyecto?: string;
+  }[];
+  auditoria: { accion: string }[];
+  secuencias: Record<string, number>;
+  proyectos: { id: string; nombre: string }[];
+  config: {
+    inventario: {
+      categorias: Record<string, string[]>;
+      prefijos: Record<string, string>;
+      depreciacion: { residualPct: number; aniosPorGrupo: Record<string, number | null> };
+    };
+  };
+}
+const migrarV1aV2 = (raw: Record<string, unknown>) => migrarV1aV2Real(raw) as unknown as MockDb;
+
+function comoV1(db: MockDbActual): Record<string, unknown> {
   const v1 = structuredClone(db) as unknown as Record<string, unknown>;
   const items = v1["items"] as Record<string, unknown>[];
   for (const i of items) {
@@ -67,11 +96,11 @@ describe("migración v1 → v2 con la semilla limpia", () => {
     expect([cab("EQP-010").grupo, cab("EQP-010").categoria]).toEqual(["equipos", "Equipos"]);
   });
   it("trae la configuración con categorías, prefijos y depreciación por defecto", () => {
-    expect(v2.config.inventario.categorias.seguridad).toContain("Cámaras");
+    expect(v2.config.inventario.categorias["seguridad"]).toContain("Cámaras");
     expect(v2.config.inventario.prefijos["Cámaras"]).toBe("CAM");
     expect(v2.config.inventario.depreciacion.residualPct).toBe(10);
-    expect(v2.config.inventario.depreciacion.aniosPorGrupo.herramientas).toBe(5);
-    expect(v2.config.inventario.depreciacion.aniosPorGrupo.componentes).toBeNull();
+    expect(v2.config.inventario.depreciacion.aniosPorGrupo["herramientas"]).toBe(5);
+    expect(v2.config.inventario.depreciacion.aniosPorGrupo["componentes"]).toBeNull();
   });
 });
 
@@ -168,12 +197,12 @@ describe("carga desde localStorage", () => {
     window.localStorage.clear();
     resetMemoria();
   });
-  it("una base v1 guardada se migra al leer, se guarda como v2 y la v1 queda de respaldo", async () => {
+  it("una base v1 guardada se migra al leer (v1 → v2 → v3), se guarda como v3 y la v1 queda de respaldo", async () => {
     window.localStorage.setItem("ioting.mock.db.v1", JSON.stringify(comoV1(buildSeed())));
     const items = await mockApi.inventario.listItems();
     expect(items).toHaveLength(150);
-    expect(items.filter((i) => i["grupo"] === "seguridad")).toHaveLength(6);
-    const v2 = JSON.parse(window.localStorage.getItem("ioting.mock.db.v2") ?? "null");
+    expect(items.filter((i) => i["grupo"] === "componentes")).toHaveLength(106);
+    const v2 = JSON.parse(window.localStorage.getItem("ioting.mock.db.v3") ?? "null");
     expect(v2?.items).toHaveLength(150);
     expect(window.localStorage.getItem("ioting.mock.db.v1")).not.toBeNull();
   });

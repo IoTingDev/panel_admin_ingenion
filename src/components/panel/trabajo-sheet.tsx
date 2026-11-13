@@ -69,7 +69,7 @@ const aBorrador = (t: TrabajoTecnico): Borrador => ({
 
 const opt = (v: string) => (v.trim() === "" ? undefined : v.trim());
 
-/** Alta y edición de un trabajo técnico. Las fechas son reales: se permite el pasado. */
+/** Alta y edición de un servicio técnico (entidad `TrabajoTecnico`). Las fechas son reales: se permite el pasado. */
 export function TrabajoSheet({
   open,
   onClose,
@@ -107,13 +107,13 @@ export function TrabajoSheet({
         ? api.trabajos.update(trabajo.id, data)
         : api.trabajos.create({ ...data, estado: v.estado as NuevoTrabajo["estado"] });
     },
-    (t) => `Trabajo ${t.codigo} guardado`,
+    (t) => `Servicio técnico ${t.codigo} guardado`,
   );
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent className="overflow-y-auto sm:max-w-lg">
         <SheetHeader>
-          <SheetTitle>{trabajo ? `Editar ${trabajo.codigo}` : "Nuevo trabajo técnico"}</SheetTitle>
+          <SheetTitle>{trabajo ? `Editar ${trabajo.codigo}` : "Nuevo servicio técnico"}</SheetTitle>
           <SheetDescription>
             CCTV, alarmas, telecomunicaciones, mantenimiento o instalación en sitio del cliente.
           </SheetDescription>
@@ -249,7 +249,7 @@ export function TrabajoSheet({
             <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
             </Button>
-            <Button disabled={guardar.isPending}>Guardar trabajo</Button>
+            <Button disabled={guardar.isPending}>Guardar servicio técnico</Button>
           </div>
         </form>
       </SheetContent>

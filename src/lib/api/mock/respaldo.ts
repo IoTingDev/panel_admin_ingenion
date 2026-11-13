@@ -1,5 +1,5 @@
 import type { Respaldo, RespaldoApi, ResumenRespaldo } from "../types";
-import { completarV2, migrarV1aV2, VERSION_DB } from "./migracion";
+import { migrarADbActual, VERSION_DB } from "./migracion";
 import type { MockDb } from "./seed";
 import { audit, clone, db, delay, persist, reemplazarDb } from "./store";
 
@@ -38,10 +38,8 @@ function leer(texto: string): { respaldo: Respaldo; base: MockDb } {
     if (!Array.isArray(v) || v.some((x) => !x || typeof x !== "object"))
       throw invalido(`«${k}» debe ser una lista de registros.`);
   }
-  const base =
-    r.version < VERSION_DB || datos["version"] !== VERSION_DB
-      ? migrarV1aV2(structuredClone(datos))
-      : completarV2(structuredClone(datos) as unknown as MockDb);
+  // Cualquier versión anterior se lleva al esquema actual encadenando las migraciones.
+  const base = migrarADbActual(structuredClone(datos));
   return { respaldo: r as Respaldo, base };
 }
 

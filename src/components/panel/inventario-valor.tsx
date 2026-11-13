@@ -97,7 +97,7 @@ export function ValorInventarioView() {
       type,
     });
   const porGrupo = GRUPOS.map((g) => ({
-    grupo: g === "seguridad" ? "Seguridad" : ROTULO_GRUPO[g],
+    grupo: ROTULO_GRUPO[g],
     "Existencia a costo": resumen.porGrupo[g].existencia,
     "Valor estimado": resumen.porGrupo[g].estimado,
   }));
@@ -388,7 +388,7 @@ function ImportarValoresDialog({ open, onClose }: { open: boolean; onClose: () =
                 </thead>
                 <tbody>
                   {previa
-                    .filter((p) => p.error || p.cambios.length > 0)
+                    .filter((p) => p.error || p.cambios.length > 0 || p.aviso)
                     .map((p) => (
                       <tr key={p.fila}>
                         <td>{p.fila}</td>
@@ -402,6 +402,11 @@ function ImportarValoresDialog({ open, onClose }: { open: boolean; onClose: () =
                         </td>
                         <td className={p.error ? "text-destructive" : "text-success"}>
                           {p.error || "OK"}
+                          {!p.error && p.aviso && (
+                            <span className="ml-1 text-warning" data-testid="aviso-fila">
+                              · {p.aviso}
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))}

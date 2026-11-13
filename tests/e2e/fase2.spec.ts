@@ -28,13 +28,12 @@ type Db = {
   movimientos: { sku: string; tipo: string; cantidad: number }[];
 };
 const leerDb = (page: Page) =>
-  page.evaluate(() => JSON.parse(localStorage.getItem("ioting.mock.db.v2") ?? "null") as Db);
+  page.evaluate(() => JSON.parse(localStorage.getItem("ioting.mock.db.v3") ?? "null") as Db);
 const stockDeDb = (db: Db, sku: string) =>
   db.movimientos.reduce(
     (a, m) => (m.sku !== sku ? a : m.tipo === "Entrada" ? a + m.cantidad : a - m.cantidad),
     db.items.find((i) => i.sku === sku)!.cantidad_inicial,
   );
-const cop = (n: number) => n.toLocaleString("es-CO", { maximumFractionDigits: 0 });
 /** Número de una cifra en pesos: «$ 4.010.000» → 4010000. */
 const numDe = (t: string) => Number(t.replace(/[^\d]/g, ""));
 
@@ -73,7 +72,6 @@ test("importar la plantilla con valores y ver el valor del inventario (cifras co
   const existencia = activos.reduce((a, i) => a + stockDeDb(db, i.sku) * 10_000, 0);
   const vida: Record<string, number | null> = {
     componentes: null,
-    seguridad: null,
     herramientas: 5,
     equipos: 5,
   };
@@ -95,10 +93,10 @@ test("importar la plantilla con valores y ver el valor del inventario (cifras co
   await expect(page.getByTestId("aviso-sin-valor")).toContainText("Todos los ítems tienen valor");
   await expect(page.locator("body")).toContainText("no reemplaza la contabilidad (Alegra)");
 
-  // El filtro por grupo acota las cifras: solo «Seguridad y Telecom» (6 referencias, 6 unidades).
-  await page.getByLabel("Grupo", { exact: true }).selectOption("seguridad");
+  // El filtro por grupo acota las cifras: solo «Equipos» (8 referencias).
+  await page.getByLabel("Grupo", { exact: true }).selectOption("equipos");
   const segUnidades = db.items
-    .filter((i) => i.grupo === "seguridad")
+    .filter((i) => i.grupo === "equipos")
     .reduce((a, i) => a + stockDeDb(db, i.sku), 0);
   await expect
     .poll(async () => numDe(await page.getByTestId("cifra-existencia").innerText()))
@@ -131,7 +129,7 @@ test("sin valores, el aviso cuenta exactamente los ítems sin valor (y la cifra 
 test("«descontar lo usado» en 2 clics desde la fila del ítem", async ({ page }) => {
   await entrar(page);
   await page.goto("/inventario");
-  await page.waitForFunction(() => !!localStorage.getItem("ioting.mock.db.v2"));
+  await page.waitForFunction(() => !!localStorage.getItem("ioting.mock.db.v3"));
   const antes = stockDeDb((await leerDb(page))!, "SEN-002");
   expect(antes).toBeGreaterThan(1);
   await page.getByPlaceholder("Buscar SKU, descripción o marca…").fill("SEN-002");
@@ -163,7 +161,7 @@ test("salida con fecha pasada y destino a un proyecto; la fecha futura no se dej
   await dlg.getByRole("button", { name: "Confirmar movimiento" }).click();
   await expect(dlg).toBeHidden();
   const db = (await page.evaluate(() =>
-    JSON.parse(localStorage.getItem("ioting.mock.db.v2")!),
+    JSON.parse(localStorage.getItem("ioting.mock.db.v3")!),
   )) as {
     movimientos: {
       sku: string;
@@ -207,24 +205,24 @@ test("una entrada con costo recalcula el valor unitario (promedio ponderado) a l
   await expect(page.getByLabel("Valor unitario (COP)")).toHaveValue(String(esperado));
 });
 
-test("configuración: una categoría nueva de Seguridad se numera con su prefijo", async ({
+test("configuración: una categoría nueva de Componentes se numera con su prefijo", async ({
   page,
 }) => {
   await entrar(page);
   await page.goto("/configuracion");
   await page
-    .getByLabel("Nueva categoría de Seguridad y Telecom", { exact: true })
+    .getByLabel("Nueva categoría de Componentes", { exact: true })
     .fill("Control de acceso");
-  await page.getByLabel("Prefijo de la nueva categoría de Seguridad y Telecom").fill("acc");
+  await page.getByLabel("Prefijo de la nueva categoría de Componentes").fill("acc");
   await page
-    .getByLabel("Nueva categoría de Seguridad y Telecom", { exact: true })
+    .getByLabel("Nueva categoría de Componentes", { exact: true })
     .locator("xpath=following::button[1]")
     .click();
   await page.getByRole("button", { name: "Guardar configuración de inventario" }).click();
   await expect(page.locator("body")).toContainText("Configuración guardada");
 
   await page.goto("/inventario");
-  await page.getByRole("tab", { name: "Seguridad y Telecom" }).click();
+  await page.getByRole("tab", { name: "Componentes" }).click();
   await page.getByRole("button", { name: "Nuevo ítem" }).click();
   const hoja = page.getByRole("dialog");
   await hoja.getByLabel("Categoría", { exact: true }).selectOption("Control de acceso");
@@ -238,9 +236,9 @@ test("configuración: una categoría nueva de Seguridad se numera con su prefijo
 test("una base v1 guardada en el navegador se migra a v2 sin perder datos", async ({ page }) => {
   await entrar(page);
   await page.goto("/inventario");
-  await page.waitForFunction(() => !!localStorage.getItem("ioting.mock.db.v2"));
+  await page.waitForFunction(() => !!localStorage.getItem("ioting.mock.db.v3"));
   const resultado = await page.evaluate(() => {
-    const db = JSON.parse(localStorage.getItem("ioting.mock.db.v2")!);
+    const db = JSON.parse(localStorage.getItem("ioting.mock.db.v3")!);
     // Se vuelve a dejar como la guardaba la v1: sin grupo, valoración, config ni contador.
     for (const i of db.items) {
       delete i.grupo;
@@ -274,29 +272,28 @@ test("una base v1 guardada en el navegador se migra a v2 sin perder datos", asyn
       stock_minimo: null,
       notas: "",
     });
-    localStorage.removeItem("ioting.mock.db.v2");
+    localStorage.removeItem("ioting.mock.db.v3");
     localStorage.setItem("ioting.mock.db.v1", JSON.stringify(db));
     return { movs: db.movimientos.length, aud: db.auditoria.length };
   });
   await page.reload();
-  await page.waitForFunction(() => !!localStorage.getItem("ioting.mock.db.v2"));
+  await page.waitForFunction(() => !!localStorage.getItem("ioting.mock.db.v3"));
   const v2 = (await page.evaluate(() =>
-    JSON.parse(localStorage.getItem("ioting.mock.db.v2")!),
+    JSON.parse(localStorage.getItem("ioting.mock.db.v3")!),
   )) as Db & {
     auditoria: unknown[];
   };
   const porGrupo = (g: string) => v2.items.filter((i) => i.grupo === g).length;
-  expect([
-    porGrupo("componentes"),
-    porGrupo("herramientas"),
-    porGrupo("equipos"),
-    porGrupo("seguridad"),
-  ]).toEqual([100, 37, 8, 6]);
+  // v1 → v2 → v3: 106 componentes (los 6 de cableado y conectividad ya no son un grupo aparte),
+  // 37 herramientas (con el ítem de usuario en «Cableado») y 8 equipos.
+  expect([porGrupo("componentes"), porGrupo("herramientas"), porGrupo("equipos")]).toEqual([
+    106, 37, 8,
+  ]);
   expect(v2.movimientos).toHaveLength(resultado.movs);
-  expect(v2.auditoria.length).toBe(resultado.aud + 1);
-  // Y la interfaz lo muestra: la pestaña «Seguridad y Telecom» trae sus 6 referencias.
-  await page.getByRole("tab", { name: "Seguridad y Telecom" }).click();
-  await expect(page.getByText(cop(6)).first()).toBeVisible();
+  // La cadena v1 → v2 → v3 deja dos eventos de migración, y no se pierde ninguno anterior.
+  expect(v2.auditoria.length).toBe(resultado.aud + 2);
+  // Y la interfaz lo muestra: CAB-003 está en Componentes.
+  await page.getByPlaceholder("Buscar SKU, descripción o marca…").fill("CAB-003");
   await expect(page.getByRole("row", { name: /CAB-003/ })).toBeVisible();
   // La base v1 queda intacta como respaldo.
   expect(await page.evaluate(() => localStorage.getItem("ioting.mock.db.v1") !== null)).toBe(true);

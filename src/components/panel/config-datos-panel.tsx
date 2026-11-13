@@ -103,7 +103,7 @@ export function RespaldoPanel() {
   const limpiarDemo = useApiMutation(
     api.configuracion.limpiarDemo,
     (r) =>
-      `Datos de demostración eliminados: ${r.clientes} clientes, ${r.proyectos} proyectos, ${r.trabajos} trabajos`,
+      `Datos de demostración eliminados: ${r.clientes} clientes, ${r.proyectos} proyectos, ${r.trabajos} servicios técnicos`,
   );
   return (
     <Panel title="Respaldo y datos" className="rounded-xl border p-5">
@@ -235,9 +235,9 @@ export function RespaldoPanel() {
           <DialogHeader>
             <DialogTitle>Limpiar datos de demostración</DialogTitle>
             <DialogDescription>
-              Elimina solo los clientes, usuarios, proyectos, trabajos y movimientos marcados como
-              demostración. Nunca borra lo que usted creó. No se puede deshacer: haga un respaldo
-              antes.
+              Elimina solo los clientes, usuarios, proyectos I+D+I, servicios técnicos y movimientos
+              marcados como demostración. Nunca borra lo que usted creó. No se puede deshacer: haga
+              un respaldo antes.
             </DialogDescription>
           </DialogHeader>
           <Label htmlFor="frase-demo">

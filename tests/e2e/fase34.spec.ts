@@ -81,16 +81,16 @@ test("trabajos: alta, código consecutivo sin reutilización, filtros y tablero"
   page,
 }) => {
   await entrar(page);
-  await page.goto("/trabajos");
+  await page.goto("/servicios-tecnicos");
   await expect(page.getByRole("row", { name: /TT-0001/ })).toBeVisible();
-  await page.getByRole("button", { name: "Nuevo trabajo" }).click();
+  await page.getByRole("button", { name: "Nuevo servicio técnico" }).click();
   const hoja = page.getByRole("dialog");
   await hoja.getByLabel("Cliente").selectOption({ index: 1 });
   await hoja.getByLabel("Tipo", { exact: true }).selectOption("alarmas");
   await hoja.getByLabel("Título").fill("Alarma de prueba E2E");
   await hoja.getByLabel("Fecha programada").fill("2026-03-02"); // pasado: permitido
   await hoja.getByLabel("Valor pactado (COP, informativo)").fill("500000");
-  await hoja.getByRole("button", { name: "Guardar trabajo" }).click();
+  await hoja.getByRole("button", { name: "Guardar servicio técnico" }).click();
   await expect(hoja).toBeHidden();
   await expect(page.getByRole("row", { name: /TT-0004/ })).toBeVisible();
 
@@ -115,6 +115,11 @@ test("trabajos: alta, código consecutivo sin reutilización, filtros y tablero"
   await expect
     .poll(async () => (await leerDb(page)).trabajos.find((t) => t.codigo === "TT-0004")?.estado)
     .toBe("en_curso");
+  // Y la tarjeta ya se ve en esa columna (la pantalla terminó de redibujarse) antes del siguiente arrastre.
+  await expect(
+    page.locator('section[data-columna="en_curso"] article', { hasText: "TT-0004" }),
+  ).toBeVisible();
+  await page.waitForTimeout(300);
   // Arrastrar a «Cancelado» pide motivo.
   await arrastrar(
     page,
@@ -123,9 +128,9 @@ test("trabajos: alta, código consecutivo sin reutilización, filtros y tablero"
   );
   const confirmar = page.getByRole("alertdialog");
   await expect(confirmar).toContainText("Cancelar TT-0004");
-  await expect(confirmar.getByRole("button", { name: "Cancelar trabajo" })).toBeDisabled();
+  await expect(confirmar.getByRole("button", { name: "Cancelar servicio técnico" })).toBeDisabled();
   await confirmar.getByRole("textbox").fill("El cliente desistió");
-  await confirmar.getByRole("button", { name: "Cancelar trabajo" }).click();
+  await confirmar.getByRole("button", { name: "Cancelar servicio técnico" }).click();
   await expect
     .poll(async () => (await leerDb(page)).trabajos.find((t) => t.codigo === "TT-0004")?.estado)
     .toBe("cancelado");
@@ -136,11 +141,11 @@ test("trabajos: alta, código consecutivo sin reutilización, filtros y tablero"
   await page.getByRole("button", { name: "Eliminar", exact: true }).click();
   await page.getByRole("alertdialog").getByRole("textbox").fill("Era una prueba");
   await page.getByRole("alertdialog").getByRole("button", { name: "Eliminar" }).click();
-  await page.waitForURL(/\/trabajos$/);
-  await page.getByRole("button", { name: "Nuevo trabajo" }).click();
+  await page.waitForURL(/\/servicios-tecnicos$/);
+  await page.getByRole("button", { name: "Nuevo servicio técnico" }).click();
   await hoja.getByLabel("Cliente").selectOption({ index: 1 });
   await hoja.getByLabel("Título").fill("Segundo trabajo");
-  await hoja.getByRole("button", { name: "Guardar trabajo" }).click();
+  await hoja.getByRole("button", { name: "Guardar servicio técnico" }).click();
   await expect(page.getByRole("row", { name: /TT-0005/ })).toBeVisible();
   await expect(page.getByRole("row", { name: /TT-0004/ })).toHaveCount(0);
 });
@@ -162,19 +167,19 @@ test("clientes: sector nuevo, tipo y dirección; baja cancela trabajos y la reac
   const casa = db.clientes.find((c) => c.razonSocial === "Casa Pérez")!;
   expect(casa.sector).toBe("residencial");
 
-  // Un trabajo para ese cliente, desde su ficha (pestaña Trabajos técnicos).
+  // Un trabajo para ese cliente, desde su ficha (pestaña Servicios técnicos).
   await page.goto(`/clientes/${casa.id}`);
   await expect(page.locator("body")).toContainText("Cra 5 # 10-20");
-  await page.getByRole("tab", { name: "Trabajos técnicos" }).click();
-  await page.getByRole("button", { name: "Nuevo trabajo" }).click();
+  await page.getByRole("tab", { name: "Servicios técnicos" }).click();
+  await page.getByRole("button", { name: "Nuevo servicio técnico" }).click();
   await page.getByRole("dialog").getByLabel("Título").fill("Cámaras de la casa");
-  await page.getByRole("dialog").getByRole("button", { name: "Guardar trabajo" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Guardar servicio técnico" }).click();
   await expect(page.getByRole("row", { name: /Cámaras de la casa/ })).toBeVisible();
 
   // Dar de baja: el diálogo cuenta el trabajo abierto; luego queda cancelado.
   await page.getByRole("button", { name: "Dar de baja", exact: true }).click();
   const baja = page.getByRole("alertdialog");
-  await expect(baja).toContainText("1 trabajos abiertos se cancelarán");
+  await expect(baja).toContainText("1 servicios técnicos abiertos se cancelarán");
   await baja.getByRole("textbox").fill("Cierre de prueba");
   await baja.getByRole("button", { name: "Confirmar" }).click();
   await expect

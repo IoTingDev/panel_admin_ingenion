@@ -215,7 +215,7 @@ export function ClienteDetail({ id }: { id: string }) {
             : "Reactivar cliente",
       description:
         estado === "baja"
-          ? `Se darán de baja ${impact.usuarios} usuarios; ${impact.proyectos} proyectos pasarán a baja; ${impact.trabajos} trabajos abiertos se cancelarán. Los datos históricos se conservarán.`
+          ? `Se darán de baja ${impact.usuarios} usuarios; ${impact.proyectos} proyectos pasarán a baja; ${impact.trabajos} servicios técnicos abiertos se cancelarán. Los datos históricos se conservarán.`
           : "El estado del cliente cambiará. Esta acción queda registrada en auditoría.",
       confirmLabel: "Confirmar",
       destructive: estado === "baja",
@@ -274,8 +274,8 @@ export function ClienteDetail({ id }: { id: string }) {
         <TabsList className="max-w-full justify-start overflow-x-auto">
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
           <TabsTrigger value="usuarios">Usuarios</TabsTrigger>
-          <TabsTrigger value="proyectos">Proyectos</TabsTrigger>
-          <TabsTrigger value="trabajos">Trabajos técnicos</TabsTrigger>
+          <TabsTrigger value="proyectos">Proyectos I+D+I</TabsTrigger>
+          <TabsTrigger value="trabajos">Servicios técnicos</TabsTrigger>
           <TabsTrigger value="actividad">Actividad</TabsTrigger>
         </TabsList>
         <TabsContent value="resumen">
