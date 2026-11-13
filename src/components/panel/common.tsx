@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
+import { API_MODE } from "@/lib/api";
 
 /** Logo local (public/brand). Si el archivo falta o no carga, muestra el nombre en texto. */
 export function Logo({ className }: { className?: string }) {
@@ -167,6 +168,8 @@ export function LowPill() {
 }
 
 export function DemoBadge() {
+  // En modo api los datos son reales: la insignia solo aplica al modo simulado.
+  if (API_MODE === "api") return null;
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-info/30 bg-primary-soft px-2.5 py-1 text-xs font-medium text-primary">
       <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-info" /> Datos de demostración

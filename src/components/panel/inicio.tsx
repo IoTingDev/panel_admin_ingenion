@@ -137,8 +137,8 @@ export function InicioView() {
           className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-warning/30 bg-warning/15 p-4 text-sm"
         >
           <span>
-            Hace <strong>{diasSinRespaldo()} días</strong> que no hace un respaldo. Los datos están
-            guardados solo en este navegador.
+            Hace <strong>{diasSinRespaldo()} días</strong> que no hace un respaldo.
+            {API_MODE === "mock" && " Los datos están guardados solo en este navegador."}
           </span>
           <Link to="/configuracion" className="font-semibold text-primary">
             Hacer respaldo
