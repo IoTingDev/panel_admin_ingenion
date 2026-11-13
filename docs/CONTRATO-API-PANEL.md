@@ -30,14 +30,15 @@ HTTP a los errores de §8 (`ErrorApi` con `codigo`: `no_encontrado` 404, `valida
 `regla_negocio` 409, `sin_sesion` 401, `sin_permiso` 403, `red`, `no_configurado`, `desconocido`) y
 **conserva el mensaje del servidor**. **No inventa nada del backend:**
 
-- **Rutas.** El contrato no define endpoints. El cliente usa una **convención provisional propia**,
-  derivada mecánicamente de los nombres de `types.ts`: `POST {VITE_API_BASE_URL}/{interfaz}/{operación}`
-  con cuerpo `{ "args": [...] }` y respuesta `{ "resultado": ... }` (error: `{ "mensaje": "..." }`). **No es el
-  diseño de endpoints del backend**: ese diseño es la propuesta de Fase 2, y se inyecta con
-  `construirUrl` sin tocar el resto.
-- **Credenciales.** `AuthTokenProvider.getToken()` es un puerto. Su implementación real **queda
-  pendiente del ADR de identidad** (§1 punto 2). El cliente envía `Authorization: Bearer <token>`
-  (estándar de los autorizadores JWT); confirmarlo forma parte de ese ADR.
+- **Rutas (definitivas, decidido 2026-11-12).** Enrutador único `POST /v1/{interfaz}/{operación}` con
+  cuerpo `{ "args": [...] }` y respuesta `{ "resultado": ... }` (error: `{ "mensaje": "..." }`). Mapea 1 a 1
+  con las interfaces de `types.ts`. La base es `VITE_API_BASE_URL`; el prefijo `/v1` forma parte de la
+  ruta del backend y se inyecta con `construirUrl`.
+- **Credenciales (decidido, propuesto en ADR-0046).** `AuthTokenProvider.getToken()` queda definido por
+  la **sesión propia del panel**: tras el inicio de sesión corporativo (aplicación SAML de IAM Identity
+  Center), una capa delgada emite una sesión de corta vida firmada con una clave KMS del panel, con
+  población `corporativa` y sin derechos de negocio. El autorizador de la API es un Lambda REQUEST que la
+  valida. Mientras el ADR-0046 siga «Propuesto» esto no es aceptado.
 - **`AuthApi` en modo `api`** es un puerto pendiente: `currentUser()` devuelve `null` (la interfaz
   muestra el ingreso) y `login()` explica que el ingreso no está configurado.
 
@@ -48,7 +49,8 @@ AWS). La ejecución contra el **backend real está definida y omitida: «backend
 nuevo debe pasar esa suite.
 
 **Alcance de este documento:** contrato y reglas. El backend, su infraestructura y la identidad real
-**no están implementados** (Fase 2, chat de arquitectura).
+están **decididos como propuesta** (ADR-0046) y en construcción en dev; no son parte de este contrato
+hasta que se confirmen.
 
 ---
 
@@ -80,9 +82,11 @@ No se rellena con suposiciones.
    plataforma, MFA obligatorio) con dos _app clients_ (sonda y humanos de Bahía): **no hay pool
    de staff**. La única mención de la consola de operación es un comentario de
    `infra/portal-clientes/portal.tf`: `admin.iotingdev.com` «sobre IAM Identity Center».
-   **SIN FUNDAMENTO DOCUMENTAL:** cómo una aplicación web consume una identidad de Identity Center
-   (OIDC o SAML) y cómo se valida en la API (el autorizador actual es JWT de Cognito). **Requiere
-   ADR nuevo** (Fase 2).
+   **DECIDIDO (propuesto), 2026-11-12:** aplicación **SAML 2.0** en Identity Center más una capa
+   delgada de sesión propia, validada por un autorizador Lambda REQUEST (ADR-0046, estado
+   «Propuesto»; verificado: la API de Identity Center no permite configurar por IaC el ACS, la
+   audiencia ni los atributos, así que la aplicación SAML se crea a mano bajo una excepción DAW-58
+   que caduca el 2027-05-12). Alternativa B (Cognito federado) queda como respaldo.
 3. **Alegra.** Se cita en el encargo como sistema contable y de facturación. **No aparece
    nombrado en `docs/` ni en `docs/adr/`**; la clasificación CB-16 (contabilidad y facturación se
    compran) es la que lo respalda. La integración (§9) es una **propuesta**, no un hecho.
@@ -467,8 +471,8 @@ Esta sección **propone** el encaje; lo marcado como pendiente está en §1.
 
 1. **Autenticación del personal (sustituye `AuthApi` mock).** Por la **vía corporativa**
    (IAM Identity Center, DAW-17 y DS-06), no por Cognito. El mecanismo concreto de la aplicación
-   web contra Identity Center **no tiene fundamento documental** y es una decisión de diseño con
-   ADR (§1 punto 2). `Operador.rol = "Administrador"` se deriva de la asignación de conjunto de
+   web contra Identity Center está **decidido (propuesto)** en ADR-0046: SAML 2.0 y sesión propia de
+   corta vida (§0, §1 punto 2). `Operador.rol = "Administrador"` se deriva de la asignación de conjunto de
    permisos del operador, no de un grupo de Cognito.
 2. **Zero Trust (ADR-0014).** El panel no es una excepción: cada operación se autentica, autoriza
    y registra; ninguna llamada se confía por su origen.
