@@ -151,7 +151,7 @@ export function InventarioView() {
       <PageHeader
         eyebrow="Gestión"
         title="Inventario"
-        subtitle="Componentes, herramientas, equipos y material de seguridad y telecom."
+        subtitle="Componentes, herramientas y equipos del taller."
         actions={
           <>
             <Button asChild variant="outline">

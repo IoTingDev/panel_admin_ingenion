@@ -92,7 +92,9 @@ function aplicarMovimiento(data: NuevoMovimiento) {
   const trabajo =
     data.destinoTipo === "trabajo" ? d.trabajos.find((t) => t.id === data.destinoId) : undefined;
   if (trabajo?.estado === "cancelado")
-    throw new Error(`El trabajo ${trabajo.codigo} está cancelado: no admite más material.`);
+    throw new Error(
+      `El servicio técnico ${trabajo.codigo} está cancelado: no admite más material.`,
+    );
   const proyecto =
     data.destinoTipo === "proyecto"
       ? d.proyectos.find((p) => p.id === data.destinoId)?.nombre
@@ -647,7 +649,6 @@ export const mockApi: Api = {
         componentes: g("componentes"),
         herramientas: g("herramientas"),
         equipos: g("equipos"),
-        seguridad: g("seguridad"),
       };
     },
   },

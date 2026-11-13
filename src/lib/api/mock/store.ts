@@ -1,11 +1,12 @@
 import { inicializarSecuencias } from "@/lib/inventario";
 import { uid } from "@/lib/format";
 import type { Auditoria, Cliente } from "../types";
-import { completarV2, migrarV1aV2 } from "./migracion";
+import { completarDb, migrarADbActual } from "./migracion";
 import { ACTOR, buildSeed, type MockDb } from "./seed";
 
-export const DB_KEY = "ioting.mock.db.v2";
-/** La v1 se conserva intacta como respaldo tras migrar. */
+export const DB_KEY = "ioting.mock.db.v3";
+/** Las bases anteriores se conservan intactas como respaldo tras migrar. */
+export const DB_KEY_V2 = "ioting.mock.db.v2";
 export const DB_KEY_V1 = "ioting.mock.db.v1";
 export const SESSION_KEY = "ioting.mock.session.v1";
 export const delay = (ms = 120) => new Promise((r) => setTimeout(r, ms));
@@ -21,20 +22,23 @@ export function db(): MockDb {
       try {
         const guardada = JSON.parse(raw) as MockDb;
         guardada.secuencias ??= inicializarSecuencias(guardada.items, guardada.movimientos);
-        cache = completarV2(guardada);
+        cache = completarDb(guardada);
         return cache;
       } catch {
         /* reseed */
       }
     }
-    const v1 = window.localStorage.getItem(DB_KEY_V1);
-    if (v1) {
+    // La más reciente de las anteriores: v2 si existe, si no v1. Se migra, se guarda como v3 y
+    // la original queda intacta.
+    for (const clave of [DB_KEY_V2, DB_KEY_V1]) {
+      const previa = window.localStorage.getItem(clave);
+      if (!previa) continue;
       try {
-        cache = migrarV1aV2(JSON.parse(v1) as Record<string, unknown>);
+        cache = migrarADbActual(JSON.parse(previa) as Record<string, unknown>);
         persist();
         return cache;
       } catch {
-        /* reseed */
+        /* siguiente */
       }
     }
   }

@@ -59,7 +59,7 @@ test("flujo completo: valores → trabajo → proyecto → kanban → limpiar de
 
   // 3) Salida con destino a un trabajo y fecha pasada
   const trabajo = db1.trabajos.find((t) => t.codigo === "TT-0003")!;
-  await page.goto(`/trabajos/${trabajo.id}`);
+  await page.goto(`/servicios-tecnicos/${trabajo.id}`);
   await page.getByRole("tab", { name: "Materiales usados" }).click();
   await page.getByRole("button", { name: "Registrar material usado" }).click();
   const dlg = page.getByRole("dialog");

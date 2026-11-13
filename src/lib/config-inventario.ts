@@ -1,12 +1,14 @@
 import type { ConfigInventario, GrupoInventario } from "@/lib/api/types";
 
-export const GRUPOS: GrupoInventario[] = ["componentes", "herramientas", "equipos", "seguridad"];
+/** Grupos de la v2 (incluía «seguridad»). Solo lo usa la migración. */
+export type GrupoV2 = GrupoInventario | "seguridad";
+
+export const GRUPOS: GrupoInventario[] = ["componentes", "herramientas", "equipos"];
 
 export const ROTULO_GRUPO: Record<GrupoInventario, string> = {
   componentes: "Componentes",
   herramientas: "Herramientas",
   equipos: "Equipos",
-  seguridad: "Seguridad y Telecom",
 };
 
 /**
@@ -23,14 +25,7 @@ export const CONFIG_INVENTARIO_DEFECTO: ConfigInventario = {
       "Pantallas",
       "SBC y cámaras",
       "Microcontroladores",
-    ],
-    herramientas: [
-      "Herramientas eléctricas y brocas",
-      "Herramientas de mano",
-      "Accesorios de taller",
-    ],
-    equipos: ["Equipos"],
-    seguridad: [
+      // Seguridad y telecomunicaciones se clasifican aquí (v3): editables en Configuración.
       "Cámaras",
       "Grabadores (DVR/NVR)",
       "Alarmas y sensores",
@@ -39,6 +34,12 @@ export const CONFIG_INVENTARIO_DEFECTO: ConfigInventario = {
       "Energía y respaldo",
       "Accesorios de instalación",
     ],
+    herramientas: [
+      "Herramientas eléctricas y brocas",
+      "Herramientas de mano",
+      "Accesorios de taller",
+    ],
+    equipos: ["Equipos"],
   },
   prefijos: {
     Instrumentación: "SEN",
@@ -60,23 +61,23 @@ export const CONFIG_INVENTARIO_DEFECTO: ConfigInventario = {
     "Accesorios de instalación": "CAB",
   },
   depreciacion: {
-    aniosPorGrupo: { componentes: null, herramientas: 5, equipos: 5, seguridad: null },
+    aniosPorGrupo: { componentes: null, herramientas: 5, equipos: 5 },
     residualPct: 10,
   },
 };
 
 /** Reclasificación del encargo v2 (solo grupo y categoría; los SKU no cambian). */
-export const RECLASIFICACION_V1: Record<string, [GrupoInventario, string]> = {
+export const RECLASIFICACION_V1: Record<string, [GrupoV2, string]> = {
   ...Object.fromEntries(
     ["CAB-001", "CAB-008", "CAB-009", "CAB-010", "CAB-011", "CAB-012"].map((s) => [
       s,
-      ["herramientas", "Accesorios de taller"] as [GrupoInventario, string],
+      ["herramientas", "Accesorios de taller"] as [GrupoV2, string],
     ]),
   ),
   ...Object.fromEntries(
     ["CAB-002", "CAB-003", "CAB-004", "CAB-005", "CAB-006", "CAB-007"].map((s) => [
       s,
-      ["seguridad", "Cableado y conectividad"] as [GrupoInventario, string],
+      ["seguridad", "Cableado y conectividad"] as [GrupoV2, string],
     ]),
   ),
   "EQP-008": ["herramientas", "Herramientas de mano"],

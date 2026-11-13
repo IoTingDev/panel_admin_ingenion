@@ -1,7 +1,7 @@
 // Fases 3 y 4 — proyectos, trabajos técnicos, datos de demostración y respaldo.
 import { beforeEach, describe, expect, it } from "vitest";
 import { mockApi, resetMemoria, resetMockDb } from "@/lib/api/mock";
-import { completarV2 } from "@/lib/api/mock/migracion";
+import { completarDb } from "@/lib/api/mock/migracion";
 import type { MockDb } from "@/lib/api/mock/seed";
 import { derivarAvisos } from "@/lib/avisos";
 import { materialDeDestino } from "@/lib/material";
@@ -53,7 +53,7 @@ describe("Fase 3 — estados y fechas de proyectos", () => {
         }),
       ),
     ) as unknown as MockDb;
-    completarV2(db);
+    completarDb(db);
     expect(db.proyectos[0]!.estado).toBe("en_desarrollo");
     expect(db.proyectos[0]!.registradoEn).toBeTruthy();
   });
@@ -312,7 +312,7 @@ describe("Fase 4 — trabajos técnicos", () => {
       ],
       hoy: "2026-11-12",
     });
-    expect(avisos.map((a) => a.texto)).toEqual(["1 trabajo vencido sin iniciar"]);
+    expect(avisos.map((a) => a.texto)).toEqual(["1 servicio vencido sin iniciar"]);
   });
 });
 

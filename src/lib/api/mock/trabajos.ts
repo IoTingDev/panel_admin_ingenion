@@ -6,15 +6,16 @@ import { audit, clone, db, delay, exigirClienteActivo, exigirMotivo, must, persi
 
 const dia = (f: string) => f.slice(0, 10);
 
-/** Valida los campos de un trabajo (ya fusionados). Lanza con un mensaje claro. */
+/** Valida los campos de un servicio técnico (ya fusionados). Lanza con un mensaje claro. */
 function validar(t: NuevoTrabajo) {
   const d = db();
   const cliente = d.clientes.find((c) => c.id === t.clienteId);
   if (!cliente) throw new Error("El cliente indicado no existe.");
-  if (!t.titulo || !t.titulo.trim()) throw new Error("El título del trabajo es obligatorio.");
+  if (!t.titulo || !t.titulo.trim())
+    throw new Error("El título del servicio técnico es obligatorio.");
   if (!TIPOS_TRABAJO.includes(t.tipo)) throw new Error(`Tipo de trabajo inválido: «${t.tipo}».`);
   if (t.estado && !ESTADOS_TRABAJO.includes(t.estado))
-    throw new Error(`Estado de trabajo inválido: «${t.estado}».`);
+    throw new Error(`Estado de servicio técnico inválido: «${t.estado}».`);
   if (t.valorPactado !== undefined && (!Number.isInteger(t.valorPactado) || t.valorPactado < 0))
     throw new Error("El valor pactado debe ser un entero COP ≥ 0.");
   if (t.fechaInicio && t.fechaFin && dia(t.fechaFin) < dia(t.fechaInicio))
@@ -37,7 +38,7 @@ export const trabajosApi: TrabajosApi = {
     const cliente = validar(data);
     if (cliente.estado !== "activo")
       throw new Error(
-        `El cliente ${cliente.razonSocial} está en ${cliente.estado}: no admite trabajos nuevos.`,
+        `El cliente ${cliente.razonSocial} está en ${cliente.estado}: no admite servicios técnicos nuevos.`,
       );
     const estado = data.estado ?? "programado";
     const hoy = hoyBogota();
@@ -68,7 +69,7 @@ export const trabajosApi: TrabajosApi = {
     const d = db();
     const t = must(
       d.trabajos.find((x) => x.id === id),
-      "Trabajo no encontrado",
+      "Servicio técnico no encontrado",
     );
     validar({ ...t, ...data });
     const cambios = Object.entries(data).map(
@@ -90,18 +91,18 @@ export const trabajosApi: TrabajosApi = {
     const d = db();
     const t = must(
       d.trabajos.find((x) => x.id === id),
-      "Trabajo no encontrado",
+      "Servicio técnico no encontrado",
     );
     if (t.estado === estado) return clone(t);
     const prev = t.estado;
     const hoy = hoyBogota();
     if (estado === "cancelado") {
-      t.motivoCancelacion = exigirMotivo(motivo, "Cancelar el trabajo");
+      t.motivoCancelacion = exigirMotivo(motivo, "Cancelar el servicio técnico");
       t.bajaPorCliente = false;
     } else if (prev === "cancelado") {
       exigirClienteActivo(
         d.clientes.find((c) => c.id === t.clienteId),
-        "el trabajo",
+        "el servicio técnico",
       );
       delete t.motivoCancelacion;
       delete t.bajaPorCliente;
@@ -126,10 +127,10 @@ export const trabajosApi: TrabajosApi = {
   async eliminar(id, motivo) {
     await delay();
     const d = db();
-    const m = exigirMotivo(motivo, "La eliminación del trabajo");
+    const m = exigirMotivo(motivo, "La eliminación del servicio técnico");
     const t = must(
       d.trabajos.find((x) => x.id === id),
-      "Trabajo no encontrado",
+      "Servicio técnico no encontrado",
     );
     d.trabajos = d.trabajos.filter((x) => x.id !== id);
     audit({

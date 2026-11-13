@@ -55,20 +55,24 @@ export type DbE2E = {
 
 /** Lee la base guardada (esperando a que exista: se crea con la primera consulta). */
 export async function leerDb(page: Page): Promise<DbE2E> {
-  await page.waitForFunction(() => !!localStorage.getItem("ioting.mock.db.v2"));
-  return page.evaluate(() => JSON.parse(localStorage.getItem("ioting.mock.db.v2")!));
+  await page.waitForFunction(() => !!localStorage.getItem("ioting.mock.db.v3"));
+  return page.evaluate(() => JSON.parse(localStorage.getItem("ioting.mock.db.v3")!));
 }
 
 /** Arrastra y suelta con eventos de ratón por pasos (el drag HTML5 necesita movimiento intermedio). */
 export async function arrastrar(page: Page, origen: Locator, destino: Locator) {
-  await expect(origen).toBeVisible();
-  await expect(destino).toBeVisible();
-  await origen.scrollIntoViewIfNeeded();
-  const o = (await origen.boundingBox())!;
-  const d = (await destino.boundingBox())!;
-  // Si el tablero se estaba redibujando, falla claro en vez de con un TypeError.
-  expect(o, "no se pudo medir el origen del arrastre").not.toBeNull();
-  expect(d, "no se pudo medir el destino del arrastre").not.toBeNull();
+  // El tablero puede estar redibujándose tras un cambio anterior: se mide con reintentos y, si no se
+  // logra, falla con un mensaje claro en vez de un TypeError.
+  const medir = async (l: Locator, que: string) => {
+    for (let i = 0; i < 30; i++) {
+      const caja = await l.boundingBox().catch(() => null);
+      if (caja) return caja;
+      await page.waitForTimeout(100);
+    }
+    throw new Error(`no se pudo medir ${que} del arrastre`);
+  };
+  const o = await medir(origen, "el origen");
+  const d = await medir(destino, "el destino");
   await page.mouse.move(o.x + 20, o.y + 20);
   await page.mouse.down();
   await page.mouse.move(o.x + 40, o.y + 40, { steps: 5 });
@@ -97,3 +101,5 @@ export async function sinDesborde(page: Page, rutas: string[]) {
   expect(medidas).toBe(rutas.length);
   expect(fallos).toEqual([]);
 }
+
+export const leerDbV3 = leerDb;

@@ -61,8 +61,8 @@ const sections: {
     items: [
       { to: "/clientes", label: "Clientes", icon: Building2 },
       { to: "/usuarios", label: "Usuarios", icon: Users },
-      { to: "/proyectos", label: "Proyectos", icon: FolderKanban },
-      { to: "/trabajos", label: "Trabajos", icon: Wrench },
+      { to: "/proyectos", label: "Proyectos I+D+I", icon: FolderKanban },
+      { to: "/servicios-tecnicos", label: "Servicios técnicos", icon: Wrench },
       { to: "/inventario", label: "Inventario", icon: Boxes },
     ],
   },

@@ -22,6 +22,8 @@ import { Route as PanelInventarioSkuRouteImport } from './routes/_panel/inventar
 import { Route as PanelInventarioValorRouteImport } from './routes/_panel/inventario/valor'
 import { Route as PanelProyectosIndexRouteImport } from './routes/_panel/proyectos/index'
 import { Route as PanelProyectosIdRouteImport } from './routes/_panel/proyectos/$id'
+import { Route as PanelServiciosTecnicosIndexRouteImport } from './routes/_panel/servicios-tecnicos/index'
+import { Route as PanelServiciosTecnicosIdRouteImport } from './routes/_panel/servicios-tecnicos/$id'
 import { Route as PanelTrabajosIndexRouteImport } from './routes/_panel/trabajos/index'
 import { Route as PanelTrabajosIdRouteImport } from './routes/_panel/trabajos/$id'
 
@@ -89,6 +91,18 @@ const PanelProyectosIdRoute = PanelProyectosIdRouteImport.update({
   path: '/proyectos/$id',
   getParentRoute: () => PanelRouteRoute,
 } as any)
+const PanelServiciosTecnicosIndexRoute =
+  PanelServiciosTecnicosIndexRouteImport.update({
+    id: '/servicios-tecnicos/',
+    path: '/servicios-tecnicos/',
+    getParentRoute: () => PanelRouteRoute,
+  } as any)
+const PanelServiciosTecnicosIdRoute =
+  PanelServiciosTecnicosIdRouteImport.update({
+    id: '/servicios-tecnicos/$id',
+    path: '/servicios-tecnicos/$id',
+    getParentRoute: () => PanelRouteRoute,
+  } as any)
 const PanelTrabajosIndexRoute = PanelTrabajosIndexRouteImport.update({
   id: '/trabajos/',
   path: '/trabajos/',
@@ -110,10 +124,12 @@ export interface FileRoutesByFullPath {
   '/inventario/$sku': typeof PanelInventarioSkuRoute
   '/inventario/valor': typeof PanelInventarioValorRoute
   '/proyectos/$id': typeof PanelProyectosIdRoute
+  '/servicios-tecnicos/$id': typeof PanelServiciosTecnicosIdRoute
   '/trabajos/$id': typeof PanelTrabajosIdRoute
   '/clientes/': typeof PanelClientesIndexRoute
   '/inventario/': typeof PanelInventarioIndexRoute
   '/proyectos/': typeof PanelProyectosIndexRoute
+  '/servicios-tecnicos/': typeof PanelServiciosTecnicosIndexRoute
   '/trabajos/': typeof PanelTrabajosIndexRoute
 }
 export interface FileRoutesByTo {
@@ -126,10 +142,12 @@ export interface FileRoutesByTo {
   '/inventario/$sku': typeof PanelInventarioSkuRoute
   '/inventario/valor': typeof PanelInventarioValorRoute
   '/proyectos/$id': typeof PanelProyectosIdRoute
+  '/servicios-tecnicos/$id': typeof PanelServiciosTecnicosIdRoute
   '/trabajos/$id': typeof PanelTrabajosIdRoute
   '/clientes': typeof PanelClientesIndexRoute
   '/inventario': typeof PanelInventarioIndexRoute
   '/proyectos': typeof PanelProyectosIndexRoute
+  '/servicios-tecnicos': typeof PanelServiciosTecnicosIndexRoute
   '/trabajos': typeof PanelTrabajosIndexRoute
 }
 export interface FileRoutesById {
@@ -144,10 +162,12 @@ export interface FileRoutesById {
   '/_panel/inventario/$sku': typeof PanelInventarioSkuRoute
   '/_panel/inventario/valor': typeof PanelInventarioValorRoute
   '/_panel/proyectos/$id': typeof PanelProyectosIdRoute
+  '/_panel/servicios-tecnicos/$id': typeof PanelServiciosTecnicosIdRoute
   '/_panel/trabajos/$id': typeof PanelTrabajosIdRoute
   '/_panel/clientes/': typeof PanelClientesIndexRoute
   '/_panel/inventario/': typeof PanelInventarioIndexRoute
   '/_panel/proyectos/': typeof PanelProyectosIndexRoute
+  '/_panel/servicios-tecnicos/': typeof PanelServiciosTecnicosIndexRoute
   '/_panel/trabajos/': typeof PanelTrabajosIndexRoute
 }
 export interface FileRouteTypes {
@@ -162,10 +182,12 @@ export interface FileRouteTypes {
     | '/inventario/$sku'
     | '/inventario/valor'
     | '/proyectos/$id'
+    | '/servicios-tecnicos/$id'
     | '/trabajos/$id'
     | '/clientes/'
     | '/inventario/'
     | '/proyectos/'
+    | '/servicios-tecnicos/'
     | '/trabajos/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -178,10 +200,12 @@ export interface FileRouteTypes {
     | '/inventario/$sku'
     | '/inventario/valor'
     | '/proyectos/$id'
+    | '/servicios-tecnicos/$id'
     | '/trabajos/$id'
     | '/clientes'
     | '/inventario'
     | '/proyectos'
+    | '/servicios-tecnicos'
     | '/trabajos'
   id:
     | '__root__'
@@ -195,10 +219,12 @@ export interface FileRouteTypes {
     | '/_panel/inventario/$sku'
     | '/_panel/inventario/valor'
     | '/_panel/proyectos/$id'
+    | '/_panel/servicios-tecnicos/$id'
     | '/_panel/trabajos/$id'
     | '/_panel/clientes/'
     | '/_panel/inventario/'
     | '/_panel/proyectos/'
+    | '/_panel/servicios-tecnicos/'
     | '/_panel/trabajos/'
   fileRoutesById: FileRoutesById
 }
@@ -300,6 +326,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PanelProyectosIdRouteImport
       parentRoute: typeof PanelRouteRoute
     }
+    '/_panel/servicios-tecnicos/': {
+      id: '/_panel/servicios-tecnicos/'
+      path: '/servicios-tecnicos'
+      fullPath: '/servicios-tecnicos/'
+      preLoaderRoute: typeof PanelServiciosTecnicosIndexRouteImport
+      parentRoute: typeof PanelRouteRoute
+    }
+    '/_panel/servicios-tecnicos/$id': {
+      id: '/_panel/servicios-tecnicos/$id'
+      path: '/servicios-tecnicos/$id'
+      fullPath: '/servicios-tecnicos/$id'
+      preLoaderRoute: typeof PanelServiciosTecnicosIdRouteImport
+      parentRoute: typeof PanelRouteRoute
+    }
     '/_panel/trabajos/': {
       id: '/_panel/trabajos/'
       path: '/trabajos'
@@ -326,10 +366,12 @@ interface PanelRouteRouteChildren {
   PanelInventarioSkuRoute: typeof PanelInventarioSkuRoute
   PanelInventarioValorRoute: typeof PanelInventarioValorRoute
   PanelProyectosIdRoute: typeof PanelProyectosIdRoute
+  PanelServiciosTecnicosIdRoute: typeof PanelServiciosTecnicosIdRoute
   PanelTrabajosIdRoute: typeof PanelTrabajosIdRoute
   PanelClientesIndexRoute: typeof PanelClientesIndexRoute
   PanelInventarioIndexRoute: typeof PanelInventarioIndexRoute
   PanelProyectosIndexRoute: typeof PanelProyectosIndexRoute
+  PanelServiciosTecnicosIndexRoute: typeof PanelServiciosTecnicosIndexRoute
   PanelTrabajosIndexRoute: typeof PanelTrabajosIndexRoute
 }
 
@@ -342,10 +384,12 @@ const PanelRouteRouteChildren: PanelRouteRouteChildren = {
   PanelInventarioSkuRoute: PanelInventarioSkuRoute,
   PanelInventarioValorRoute: PanelInventarioValorRoute,
   PanelProyectosIdRoute: PanelProyectosIdRoute,
+  PanelServiciosTecnicosIdRoute: PanelServiciosTecnicosIdRoute,
   PanelTrabajosIdRoute: PanelTrabajosIdRoute,
   PanelClientesIndexRoute: PanelClientesIndexRoute,
   PanelInventarioIndexRoute: PanelInventarioIndexRoute,
   PanelProyectosIndexRoute: PanelProyectosIndexRoute,
+  PanelServiciosTecnicosIndexRoute: PanelServiciosTecnicosIndexRoute,
   PanelTrabajosIndexRoute: PanelTrabajosIndexRoute,
 }
 

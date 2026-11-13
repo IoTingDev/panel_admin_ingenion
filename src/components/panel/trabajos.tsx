@@ -39,7 +39,7 @@ const Estado = ({ t }: { t: Pick<TrabajoTecnico, "estado"> }) => (
   <StatusBadge estado={t.estado} label={ROTULO_ESTADO_TRABAJO[t.estado]} />
 );
 
-/** Mover un trabajo de estado: cancelar pide motivo; lo demás es directo. */
+/** Mover un servicio técnico de estado: cancelar pide motivo; lo demás es directo. */
 function useCambioEstado(setConfirm: (c: ConfirmState | null) => void) {
   const cambiar = useApiMutation(
     ({ id, estado, motivo }: { id: string; estado: EstadoTrabajo; motivo?: string }) =>
@@ -50,8 +50,9 @@ function useCambioEstado(setConfirm: (c: ConfirmState | null) => void) {
     if (estado === "cancelado")
       setConfirm({
         title: `Cancelar ${t.codigo}`,
-        description: "El trabajo queda cancelado y no admite más material. Queda en auditoría.",
-        confirmLabel: "Cancelar trabajo",
+        description:
+          "El servicio técnico queda cancelado y no admite más material. Queda en auditoría.",
+        confirmLabel: "Cancelar servicio técnico",
         destructive: true,
         onConfirm: (motivo) => cambiar.mutateAsync({ id: t.id, estado, motivo }),
       });
@@ -89,12 +90,12 @@ export function TrabajosView({ clienteId = "" }: { clienteId?: string }) {
     <>
       <PageHeader
         eyebrow="Gestión"
-        title="Trabajos técnicos"
+        title="Servicios técnicos"
         subtitle="CCTV, alarmas, telecomunicaciones, mantenimiento e instalación."
         actions={
           <Button onClick={() => setOpen(true)}>
             <Plus />
-            Nuevo trabajo
+            Nuevo servicio técnico
           </Button>
         }
       />
@@ -185,7 +186,7 @@ export function TrabajosView({ clienteId = "" }: { clienteId?: string }) {
                   >
                     <p className="code-id text-xs">{t.codigo}</p>
                     <Link
-                      to="/trabajos/$id"
+                      to="/servicios-tecnicos/$id"
                       params={{ id: t.id }}
                       className="font-display text-sm font-semibold hover:text-primary"
                     >
@@ -217,7 +218,7 @@ export function TrabajosView({ clienteId = "" }: { clienteId?: string }) {
             <thead>
               <tr>
                 <th>Código</th>
-                <th>Trabajo</th>
+                <th>Servicio</th>
                 <th>Cliente</th>
                 <th>Responsable</th>
                 <th>Estado</th>
@@ -234,7 +235,7 @@ export function TrabajosView({ clienteId = "" }: { clienteId?: string }) {
                       <div>
                         <Link
                           className="font-semibold hover:text-primary"
-                          to="/trabajos/$id"
+                          to="/servicios-tecnicos/$id"
                           params={{ id: t.id }}
                         >
                           {t.titulo}
@@ -256,7 +257,9 @@ export function TrabajosView({ clienteId = "" }: { clienteId?: string }) {
               ))}
             </tbody>
           </table>
-          {!rows.length && <EmptyState icon={Wrench} title="No se encontraron trabajos" />}
+          {!rows.length && (
+            <EmptyState icon={Wrench} title="No se encontraron servicios técnicos" />
+          )}
         </DataFrame>
       )}
       <TrabajoSheet open={open} onClose={() => setOpen(false)} clienteId={clienteId} />
@@ -278,22 +281,22 @@ export function TrabajoDetail({ id }: { id: string }) {
   const mover = useCambioEstado(setConfirm);
   const eliminar = useApiMutation(
     (motivo: string) => api.trabajos.eliminar(id, motivo),
-    "Trabajo eliminado",
+    "Servicio técnico eliminado",
   );
   if (isLoading) return <Loading />;
-  if (!t) return <EmptyState icon={Wrench} title="Trabajo no encontrado" />;
+  if (!t) return <EmptyState icon={Wrench} title="Servicio técnico no encontrado" />;
   const cliente = clientes.find((c) => c.id === t.clienteId);
   const material = materialDeDestino(movs, "trabajo", t.id);
   const askEliminar = () =>
     setConfirm({
       title: `Eliminar ${t.codigo}`,
       description:
-        "Se elimina definitivamente. Los movimientos de inventario hacia este trabajo se conservan con su nombre. El código no se reutiliza. Queda en auditoría.",
+        "Se elimina definitivamente. Los movimientos de inventario hacia este servicio técnico se conservan con su nombre. El código no se reutiliza. Queda en auditoría.",
       confirmLabel: "Eliminar",
       destructive: true,
       onConfirm: async (motivo) => {
         await eliminar.mutateAsync(motivo);
-        await navigate({ to: "/trabajos" });
+        await navigate({ to: "/servicios-tecnicos" });
       },
     });
   const dato = (label: string, valor: string | undefined) => (
@@ -305,20 +308,20 @@ export function TrabajoDetail({ id }: { id: string }) {
   return (
     <>
       <Button asChild variant="link" className="mb-4 px-0">
-        <Link to="/trabajos">
+        <Link to="/servicios-tecnicos">
           <ArrowLeft />
-          Trabajos técnicos
+          Servicios técnicos
         </Link>
       </Button>
       <PageHeader
-        eyebrow={`Gestión / Trabajos · ${t.codigo}`}
+        eyebrow={`Gestión / Servicios técnicos · ${t.codigo}`}
         title={t.titulo}
         subtitle={cliente?.razonSocial}
         actions={
           <>
             <Estado t={t} />
             <select
-              aria-label="Estado del trabajo"
+              aria-label="Estado del servicio técnico"
               className="app-select"
               value={t.estado}
               onChange={(e) => mover(t, e.target.value as EstadoTrabajo)}

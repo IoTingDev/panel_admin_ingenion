@@ -66,8 +66,8 @@ export function ReactivarHijosDialog({
         <DialogHeader>
           <DialogTitle>Cliente reactivado</DialogTitle>
           <DialogDescription>
-            Sus usuarios, proyectos y trabajos siguen en baja o cancelados. Marque los que quiere
-            reactivar; el resto queda como está.
+            Sus usuarios, proyectos y servicios técnicos siguen en baja o cancelados. Marque los que
+            quiere reactivar; el resto queda como está.
           </DialogDescription>
         </DialogHeader>
         <div className="max-h-72 space-y-4 overflow-auto text-sm">
@@ -101,7 +101,7 @@ export function ReactivarHijosDialog({
           )}
           {hijos && hijos.trabajos.length > 0 && (
             <fieldset className="space-y-2">
-              <legend className="mb-1 font-semibold">Trabajos técnicos</legend>
+              <legend className="mb-1 font-semibold">Servicios técnicos</legend>
               {hijos.trabajos.map((t) => (
                 <label key={t.id} className="flex items-center gap-2">
                   <Checkbox

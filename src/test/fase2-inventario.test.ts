@@ -13,7 +13,7 @@ const inicialDe: Record<string, number> = Object.fromEntries(
 
 const api = mockApi;
 const nuevo = (over: Partial<Omit<ItemInventario, "sku">> = {}): Omit<ItemInventario, "sku"> => ({
-  grupo: "seguridad",
+  grupo: "componentes",
   categoria: "Cámaras",
   subcategoria: "Domo",
   descripcion: "Cámara domo 2 MP",
@@ -55,16 +55,16 @@ describe("2.1 grupos explícitos y configuración editable", () => {
     const g = (s: string) => items.find((i) => i.sku === s)!.grupo;
     expect([g("CAB-001"), g("CAB-003"), g("EQP-009"), g("EQP-001"), g("SEN-001")]).toEqual([
       "herramientas",
-      "seguridad",
+      "componentes",
       "herramientas",
       "equipos",
       "componentes",
     ]);
   });
-  it("un ítem nuevo de seguridad numera con el prefijo de su categoría", async () => {
+  it("un ítem nuevo de cámaras (en Componentes) numera con el prefijo de su categoría", async () => {
     const cam = await api.inventario.createItem(nuevo());
     expect(cam.sku).toBe("CAM-001");
-    expect(cam.grupo).toBe("seguridad");
+    expect(cam.grupo).toBe("componentes");
     const grb = await api.inventario.createItem(nuevo({ categoria: "Grabadores (DVR/NVR)" }));
     expect(grb.sku).toBe("GRB-001");
     const cam2 = await api.inventario.createItem(nuevo());
@@ -72,13 +72,13 @@ describe("2.1 grupos explícitos y configuración editable", () => {
   });
   it("rechaza una categoría que no pertenece al grupo", async () => {
     await expect(
-      api.inventario.createItem(nuevo({ categoria: "Instrumentación" })),
+      api.inventario.createItem(nuevo({ grupo: "equipos", categoria: "Instrumentación" })),
     ).rejects.toThrow(/categor/i);
   });
   it("la lista de categorías y prefijos es editable desde configuración y queda auditada", async () => {
     const cfg = await api.configuracion.get();
     const inv = structuredClone(cfg.inventario);
-    inv.categorias.seguridad.push("Control de acceso");
+    inv.categorias.componentes.push("Control de acceso");
     inv.prefijos["Control de acceso"] = "ACC";
     await api.configuracion.actualizarInventario(inv);
     const it = await api.inventario.createItem(nuevo({ categoria: "Control de acceso" }));
@@ -89,7 +89,7 @@ describe("2.1 grupos explícitos y configuración editable", () => {
   it("no deja repetir un prefijo ya usado por otra categoría con ítems distintos grupos ni vaciar un prefijo", async () => {
     const cfg = await api.configuracion.get();
     const inv = structuredClone(cfg.inventario);
-    inv.categorias.seguridad.push("Otra");
+    inv.categorias.componentes.push("Otra");
     inv.prefijos["Otra"] = "";
     await expect(api.configuracion.actualizarInventario(inv)).rejects.toThrow(/prefijo/i);
   });
@@ -331,7 +331,7 @@ describe("2.3 importación de valores desde CSV (todo o nada)", () => {
       "Accesorios de taller",
       "CAB-005",
     ]);
-    await expect(api.inventario.importarValores([fila({ categoria: "Cámaras" })])).rejects.toThrow(
+    await expect(api.inventario.importarValores([fila({ categoria: "Equipos" })])).rejects.toThrow(
       /categor/i,
     );
   });

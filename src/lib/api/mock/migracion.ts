@@ -3,19 +3,22 @@ import {
   CONFIG_INVENTARIO_DEFECTO,
   GRUPO_V1_POR_PREFIJO,
   RECLASIFICACION_V1,
+  type GrupoV2,
 } from "@/lib/config-inventario";
 import { SECTORES_DEFECTO } from "@/lib/dominio";
 import { inicializarSecuencias, prefijoDeSku } from "@/lib/inventario";
-import type { GrupoInventario } from "../types";
 import { ACTOR, type MockDb } from "./seed";
 
-export const VERSION_DB = 2;
+/** Versión del esquema guardado. v1 → v2 (grupos explícitos), v2 → v3 (tres grupos). */
+export const VERSION_DB = 3;
 
-/** Forma laxa de lo guardado por la v1 (puede faltar cualquier campo nuevo). */
+type Laxo = Record<string, unknown>;
+
+/** Forma laxa de lo guardado por versiones anteriores (puede faltar cualquier campo nuevo). */
 interface RegItem {
   sku: string;
   categoria: string;
-  grupo?: GrupoInventario;
+  grupo?: GrupoV2;
   [k: string]: unknown;
 }
 interface RegMov {
@@ -30,6 +33,14 @@ interface RegProyecto {
   registradoEn?: string;
   [k: string]: unknown;
 }
+interface RegConfig {
+  inventario: {
+    categorias: Record<string, string[]>;
+    prefijos: Record<string, string>;
+    depreciacion: { aniosPorGrupo: Record<string, number | null>; residualPct: number };
+  };
+  sectores: string[];
+}
 interface RegDb {
   version?: number;
   items?: RegItem[];
@@ -39,17 +50,51 @@ interface RegDb {
   trabajos?: { codigo: string }[];
   secuencias?: Record<string, number>;
   auditoria?: unknown[];
-  config?: MockDb["config"];
+  config?: RegConfig;
   [k: string]: unknown;
 }
+
+/** Configuración de inventario tal como la tenía la v2 (cuatro grupos). Solo para migrar. */
+const configInventarioV2 = (): RegConfig["inventario"] => ({
+  categorias: {
+    componentes: [
+      "Instrumentación",
+      "Potencia y actuadores",
+      "Comunicación",
+      "Pantallas",
+      "SBC y cámaras",
+      "Microcontroladores",
+    ],
+    herramientas: [
+      "Herramientas eléctricas y brocas",
+      "Herramientas de mano",
+      "Accesorios de taller",
+    ],
+    equipos: ["Equipos"],
+    seguridad: [
+      "Cámaras",
+      "Grabadores (DVR/NVR)",
+      "Alarmas y sensores",
+      "Cableado y conectividad",
+      "Redes y telecom",
+      "Energía y respaldo",
+      "Accesorios de instalación",
+    ],
+  },
+  prefijos: structuredClone(CONFIG_INVENTARIO_DEFECTO.prefijos),
+  depreciacion: {
+    aniosPorGrupo: { componentes: null, herramientas: 5, equipos: 5, seguridad: null },
+    residualPct: 10,
+  },
+});
 
 /**
  * Sube una base guardada por la v1 a la v2 sin perder movimientos ni auditoría.
  * Solo cambia `grupo` y `categoria` de los ítems (los SKU no cambian) y añade campos nuevos.
- * Es idempotente: una base que ya es v2 se devuelve igual.
+ * Devuelve una base con la forma de la v2 (cuatro grupos); `migrarV2aV3` la lleva al esquema actual.
  */
-export function migrarV1aV2(raw: Record<string, unknown>): MockDb {
-  if (raw["version"] === VERSION_DB) return completarV2(raw as unknown as MockDb);
+export function migrarV1aV2(raw: Laxo): Laxo {
+  if (Number(raw["version"] ?? 1) >= 2) return completarDb(structuredClone(raw)) as Laxo;
   const db = structuredClone(raw) as RegDb;
   const proyectos = db.proyectos ?? [];
   let reclasificados = 0;
@@ -58,7 +103,7 @@ export function migrarV1aV2(raw: Record<string, unknown>): MockDb {
     const r = RECLASIFICACION_V1[i.sku];
     const cableadoViejo = i.categoria === "Cableado"; // categoría que desaparece en la v2
     const grupoV1 = GRUPO_V1_POR_PREFIJO[prefijoDeSku(i.sku)] ?? "componentes";
-    const grupo: GrupoInventario = i.grupo ?? r?.[0] ?? (cableadoViejo ? "herramientas" : grupoV1);
+    const grupo: GrupoV2 = i.grupo ?? r?.[0] ?? (cableadoViejo ? "herramientas" : grupoV1);
     const categoria = r ? r[1] : cableadoViejo ? "Accesorios de taller" : i.categoria;
     if (grupo !== grupoV1 || categoria !== i.categoria) reclasificados++;
     return { ...i, grupo, categoria };
@@ -70,7 +115,12 @@ export function migrarV1aV2(raw: Record<string, unknown>): MockDb {
     return p ? { ...m, destinoTipo: "proyecto", destinoId: p.id } : m;
   });
 
-  const secuencias = { ...inicializarSecuencias(items, movimientos) };
+  const secuencias = {
+    ...inicializarSecuencias(
+      items as unknown as { sku: string }[],
+      movimientos as unknown as { sku: string }[],
+    ),
+  };
   for (const [k, v] of Object.entries(db.secuencias ?? {}))
     secuencias[k] = Math.max(secuencias[k] ?? 0, v);
 
@@ -87,29 +137,77 @@ export function migrarV1aV2(raw: Record<string, unknown>): MockDb {
     ...(db.auditoria ?? []),
   ];
 
-  return completarV2({
+  return completarDb({
     ...db,
     items,
     movimientos,
     secuencias,
     auditoria,
-    config: db.config ?? { inventario: structuredClone(CONFIG_INVENTARIO_DEFECTO) },
-    version: VERSION_DB,
-  } as unknown as MockDb);
+    config: db.config ?? { inventario: configInventarioV2(), sectores: [] },
+    version: 2,
+  } as Laxo);
 }
 
 /**
- * Completa una base v2 guardada con campos que se añadieron después (fases 3 y 4): idempotente.
- * No cambia el número de versión: son campos opcionales o con valor por defecto.
+ * Sube una base v2 a la v3: el grupo «seguridad» desaparece y sus ítems pasan a «componentes»
+ * conservando SKU, categoría, valor y movimientos. Las categorías de seguridad (también las que el
+ * usuario haya añadido) se funden en las de Componentes. Es idempotente.
  */
-export function completarV2(db: MockDb): MockDb {
-  const d = db as unknown as RegDb & { trabajos?: { codigo: string }[] };
+export function migrarV2aV3(raw: Laxo): MockDb {
+  if (Number(raw["version"] ?? 1) >= VERSION_DB)
+    return completarDb(structuredClone(raw)) as unknown as MockDb;
+  const db = completarDb(structuredClone(raw)) as RegDb;
+  let movidos = 0;
+  const items = (db.items ?? []).map((i) => {
+    if (i.grupo !== "seguridad") return i;
+    movidos++;
+    return { ...i, grupo: "componentes" as const };
+  });
+
+  const cfg: RegConfig = db.config ?? { inventario: configInventarioV2(), sectores: [] };
+  const cats = cfg.inventario.categorias;
+  const comp = cats["componentes"] ?? [];
+  cats["componentes"] = [...comp, ...(cats["seguridad"] ?? []).filter((c) => !comp.includes(c))];
+  delete cats["seguridad"];
+  // Una categoría usada por un ítem de Componentes no puede faltar en la lista.
+  for (const i of items)
+    if (i.grupo === "componentes" && !cats["componentes"].includes(i.categoria))
+      cats["componentes"].push(i.categoria);
+  delete cfg.inventario.depreciacion.aniosPorGrupo["seguridad"];
+
+  const auditoria = [
+    {
+      id: uid(),
+      fecha: new Date().toISOString(),
+      actor: ACTOR,
+      accion: "sistema.migracion",
+      entidad: "sistema",
+      entidadId: "db",
+      detalle: `Base v2 → v3: el grupo «seguridad» se elimina; ${movidos} ítems pasan a «componentes» con su SKU y categoría. La base v2 queda como respaldo.`,
+    },
+    ...(db.auditoria ?? []),
+  ];
+  return { ...db, items, config: cfg, auditoria, version: VERSION_DB } as unknown as MockDb;
+}
+
+/** Lleva cualquier base guardada (v1, v2 o v3) al esquema actual, encadenando las migraciones. */
+export function migrarADbActual(raw: Laxo): MockDb {
+  const v = Number(raw["version"] ?? 1);
+  if (v >= VERSION_DB) return completarDb(structuredClone(raw)) as unknown as MockDb;
+  return migrarV2aV3(v >= 2 ? raw : migrarV1aV2(raw));
+}
+
+/**
+ * Completa una base con campos que se añadieron en fases posteriores (proyectos, servicios
+ * técnicos, sectores, contador `TT`). Idempotente; no cambia el número de versión.
+ */
+export function completarDb<T extends object>(db: T): T {
+  const d = db as unknown as RegDb;
   d.trabajos ??= [];
   d.config ??= { inventario: structuredClone(CONFIG_INVENTARIO_DEFECTO), sectores: [] };
-  const cfg = d.config as MockDb["config"];
-  if (!cfg.sectores || cfg.sectores.length === 0) {
+  if (!d.config.sectores || d.config.sectores.length === 0) {
     const usados = (d.clientes ?? []).map((c) => c.sector).filter((s): s is string => !!s);
-    cfg.sectores = [...new Set([...SECTORES_DEFECTO, ...usados])];
+    d.config.sectores = [...new Set([...SECTORES_DEFECTO, ...usados])];
   }
   for (const p of d.proyectos ?? []) {
     if (p.estado === "borrador") p.estado = "en_desarrollo";

@@ -122,6 +122,13 @@ cambios de modelo** en la v2: solo se amplía la cascada (§5.4).
 
 ### 2.5 TrabajoTecnico
 
+> **Nombres en la interfaz (panel v3).** La UI dice **«Servicio técnico»** (menú, títulos, botones,
+> mensajes); la entidad, la interfaz y el prefijo siguen siendo `TrabajoTecnico`, `TrabajosApi` y
+> `TT-`. **UI: Servicio técnico ⇔ entidad `TrabajoTecnico`.** Los códigos de auditoría
+> (`trabajo.crear`, …) y el valor `destinoTipo = "trabajo"` **no cambian**. Ruta de la UI:
+> `/servicios-tecnicos` (la anterior, `/trabajos`, redirige). De igual modo, la UI llama
+> **«Proyectos I+D+I»** a la sección de la entidad `Proyecto` (ruta `/proyectos`).
+
 | Campo                                                             | Tipo                                                                           | Notas                                                                  |
 | ----------------------------------------------------------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
 | `id`                                                              | string                                                                         |                                                                        |
@@ -140,20 +147,20 @@ cambios de modelo** en la v2: solo se amplía la cascada (§5.4).
 
 ### 2.6 ItemInventario
 
-| Campo                                                                             | Tipo                                                              | Notas                                                                                         |
-| --------------------------------------------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `sku`                                                                             | string                                                            | Clave. `PPP-NNN` (prefijo de 3 letras de la categoría + consecutivo). **Nunca se reutiliza.** |
-| `grupo`                                                                           | `componentes` \| `herramientas` \| `equipos` \| `seguridad`       | **Explícito.** El prefijo del SKU solo numera. Rótulo de `seguridad`: «Seguridad y Telecom».  |
-| `categoria`                                                                       | string                                                            | Debe pertenecer al `grupo` según `Configuracion.inventario.categorias`.                       |
-| `subcategoria`, `descripcion`, `marca_referencia`, `unidad`, `ubicacion`, `notas` | string                                                            |                                                                                               |
-| `cantidad_inicial`                                                                | entero ≥ 0                                                        | Parte de la fórmula de stock.                                                                 |
-| `estado`                                                                          | `Disponible` \| `En uso` \| `En reparación` \| `Dañado` \| `Baja` | `Baja` solo por la operación `darDeBaja` (con motivo).                                        |
-| `stock_minimo`                                                                    | entero ≥ 0 \| null                                                |                                                                                               |
-| `anioCompra`                                                                      | entero 1990..año actual \| null                                   |                                                                                               |
-| `valorUnitario`                                                                   | entero COP ≥ 0 \| null                                            | Costo vigente por unidad; null = «Sin valor».                                                 |
-| `costoInicial`                                                                    | entero COP ≥ 0 \| null                                            | Costo declarado para la `cantidad_inicial`; base de «invertido».                              |
-| `vidaUtilAnios`                                                                   | número > 0 \| null                                                | Si falta, se usa la del grupo.                                                                |
-| `proveedor`                                                                       | string, opc.                                                      |                                                                                               |
+| Campo                                                                             | Tipo                                                              | Notas                                                                                                                                                                        |
+| --------------------------------------------------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sku`                                                                             | string                                                            | Clave. `PPP-NNN` (prefijo de 3 letras de la categoría + consecutivo). **Nunca se reutiliza.**                                                                                |
+| `grupo`                                                                           | `componentes` \| `herramientas` \| `equipos`                      | **Explícito.** El prefijo del SKU solo numera. Desde el panel v3 **no existe el grupo `seguridad`**: lo de seguridad y telecomunicaciones es una categoría de `componentes`. |
+| `categoria`                                                                       | string                                                            | Debe pertenecer al `grupo` según `Configuracion.inventario.categorias`.                                                                                                      |
+| `subcategoria`, `descripcion`, `marca_referencia`, `unidad`, `ubicacion`, `notas` | string                                                            |                                                                                                                                                                              |
+| `cantidad_inicial`                                                                | entero ≥ 0                                                        | Parte de la fórmula de stock.                                                                                                                                                |
+| `estado`                                                                          | `Disponible` \| `En uso` \| `En reparación` \| `Dañado` \| `Baja` | `Baja` solo por la operación `darDeBaja` (con motivo).                                                                                                                       |
+| `stock_minimo`                                                                    | entero ≥ 0 \| null                                                |                                                                                                                                                                              |
+| `anioCompra`                                                                      | entero 1990..año actual \| null                                   |                                                                                                                                                                              |
+| `valorUnitario`                                                                   | entero COP ≥ 0 \| null                                            | Costo vigente por unidad; null = «Sin valor».                                                                                                                                |
+| `costoInicial`                                                                    | entero COP ≥ 0 \| null                                            | Costo declarado para la `cantidad_inicial`; base de «invertido».                                                                                                             |
+| `vidaUtilAnios`                                                                   | número > 0 \| null                                                | Si falta, se usa la del grupo.                                                                                                                                               |
+| `proveedor`                                                                       | string, opc.                                                      |                                                                                                                                                                              |
 
 **No existe un campo `stock`**: es derivado (§6).
 
@@ -177,7 +184,7 @@ cambios de modelo** en la v2: solo se amplía la cascada (§5.4).
 - `inventario.categorias`: `Record<grupo, string[]>`.
 - `inventario.prefijos`: `Record<categoria, "ABC">` — tres letras mayúsculas; **varias categorías pueden compartir prefijo**.
 - `inventario.depreciacion.aniosPorGrupo`: `Record<grupo, number | null>` (null = no se deprecia).
-  Por defecto: componentes y seguridad `null`, herramientas 5, equipos 5.
+  Por defecto: componentes `null`, herramientas 5, equipos 5. (Tres claves: `seguridad` ya no existe.)
 - `inventario.depreciacion.residualPct`: 0..100 (por defecto 10).
 - `sectores`: `string[]` (por defecto: cacao, café, mango, residencial, comercial, industrial,
   institucional, otro).
@@ -467,14 +474,27 @@ Esta sección **propone** el encaje; lo marcado como pendiente está en §1.
 
 ## 10. Migración de datos guardados (modo mock)
 
-La base se guarda en `localStorage` como `ioting.mock.db.v2`.
+La base se guarda en `localStorage` como `ioting.mock.db.v3`. Las migraciones están
+**encadenadas** (v1 → v2 → v3) y cada base anterior **queda intacta como respaldo**; si existen
+varias, se migra la más reciente.
 
 - **v1 → v2:** al leer una base v1 se migra (los SKU **no cambian**): grupo explícito y
   reclasificación de 11 ítems (CAB-001, 008–012 → herramientas/Accesorios de taller; CAB-002–007 →
   seguridad/Cableado y conectividad; EQP-008 y 009 → herramientas/Herramientas de mano), contador
   de SKU, configuración, enlace de movimientos a su proyecto por id. **Se conservan todos los
-  movimientos y la auditoría**, se añade el evento `sistema.migracion` y la **v1 queda intacta como
-  respaldo**. Resultado de la semilla: 150 referencias, 401 unidades, grupos 100/36/8/6.
+  movimientos y la auditoría** y se añade el evento `sistema.migracion`. Resultado en la etapa v2:
+  150 referencias, 401 unidades, grupos 100/36/8/6.
+- **v2 → v3 (panel v3):** el grupo `seguridad` desaparece. Todo ítem con `grupo = seguridad` pasa a
+  `componentes` **conservando SKU, categoría, valor y movimientos**; las categorías de seguridad
+  (también las que el usuario haya añadido en Configuración) se funden en las de Componentes, se quita
+  la clave `seguridad` de la configuración y de la depreciación, y se añade un evento
+  `sistema.migracion`. Resultado con la semilla: **componentes 106, herramientas 36, equipos 8 = 150
+  referencias, 401 unidades** (CAB-002 a CAB-007 pasan a componentes, categoría «Cableado y
+  conectividad»). Idempotente.
+- **Respaldo JSON:** la versión del formato pasa a **3**. Un respaldo de la v1 o la v2 se acepta y se
+  migra al importarlo.
+- **Plantilla CSV de valores:** `grupo_propuesto` solo admite los tres grupos. Un CSV antiguo con
+  `seguridad` se acepta, se toma como `componentes` y la vista previa lo **avisa** (no es un error).
 - **Completado de campos posteriores (fases 3 y 4):** `borrador → en_desarrollo`, `registradoEn`,
   `trabajos`, `sectores`, contador `TT`. Idempotente.
 - El backend real debe aportar su propia migración desde el respaldo JSON (`Respaldo`), que es el

@@ -27,7 +27,7 @@ export interface MockDb {
   config: Configuracion;
   trabajos: TrabajoTecnico[];
   /** Versión del esquema guardado (ver migracion.ts). */
-  version: 2;
+  version: 3;
 }
 
 const id = (p: string, n: number) => `${p}-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -42,12 +42,9 @@ export const ACTOR = "Juan Camilo Velásquez";
 
 export function buildSeed(): MockDb {
   const inv = inventarioJson as InventarioExport;
-  const items: ItemInventario[] = [
-    ...inv.componentes,
-    ...inv.herramientas,
-    ...inv.equipos,
-    ...inv.seguridad,
-  ].map((i) => ({ ...i }));
+  const items: ItemInventario[] = [...inv.componentes, ...inv.herramientas, ...inv.equipos].map(
+    (i) => ({ ...i }),
+  );
 
   const c = (n: number) => id("c1000000", n);
   const clientes: Cliente[] = [
@@ -419,6 +416,6 @@ export function buildSeed(): MockDb {
       inventario: structuredClone(CONFIG_INVENTARIO_DEFECTO),
       sectores: [...SECTORES_DEFECTO],
     },
-    version: 2,
+    version: 3,
   };
 }

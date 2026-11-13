@@ -169,7 +169,7 @@ export function MovimientoDialog() {
                       </option>
                     ))}
                 </optgroup>
-                <optgroup label="Trabajos técnicos">
+                <optgroup label="Servicios técnicos">
                   {trabajos
                     .filter((t) => t.estado !== "cancelado")
                     .map((t) => (

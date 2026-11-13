@@ -180,6 +180,8 @@ export interface FilaPrevia {
   data: FilaValores;
   cambios: CambioValor[];
   error: string;
+  /** Aviso no bloqueante (p. ej. el CSV traía un grupo que ya no existe). */
+  aviso?: string | undefined;
 }
 
 /** Valida cada fila de la plantilla y calcula las diferencias; la importación aplica exactamente esto. */
@@ -197,7 +199,14 @@ export function previsualizarValores(
     const fila = idx + 1;
     const it = porSku.get(data.sku);
     const cambios: CambioValor[] = [];
-    const out = (error: string): FilaPrevia => ({ fila, sku: data.sku, data, cambios, error });
+    const out = (error: string): FilaPrevia => ({
+      fila,
+      sku: data.sku,
+      data,
+      cambios,
+      error,
+      aviso: data.aviso,
+    });
     if (!it) return out(`SKU inexistente: ${data.sku}`);
     if (vistos.has(data.sku)) return out(`SKU repetido en el lote: ${data.sku}`);
     vistos.add(data.sku);
