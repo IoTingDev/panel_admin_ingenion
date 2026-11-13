@@ -48,11 +48,11 @@ No se rellena con suposiciones.
      herramienta comprada e integrar. Mientras no se decida, el panel es **herramienta interna del
      dueño, no un dominio de la plataforma** y no debe crecer más allá de este contrato.
 2. **Autenticación del personal. Corregido tras la Fase 1 de conexión (verificado contra el
-   monorepo; la verificación en AWS en vivo queda pendiente).** El operador del panel es de la
+   monorepo y contra AWS en vivo el 2026-11-12, solo lectura).** El operador del panel es de la
    población **corporativa** (004 §5.1, DAW-17; 008 §6.1, DS-06): IAM Identity Center, doble
    factor, acceso temporal por rol. **Un operador jamás usa una identidad de plataforma.** Por
    eso el «pool de Cognito de staff» que asumía la versión anterior **sobra y contradice DS-06**.
-   En el código solo existe un pool de Cognito (`iotingdev-dev-identidad`, población de
+   En AWS (cuenta dev) hay un único pool, con el mismo hallazgo; en mgmt y prod no hay pools, y Identity Center no tiene aplicaciones registradas. En el código solo existe un pool de Cognito (`iotingdev-dev-identidad`, población de
    plataforma, MFA obligatorio) con dos _app clients_ (sonda y humanos de Bahía): **no hay pool
    de staff**. La única mención de la consola de operación es un comentario de
    `infra/portal-clientes/portal.tf`: `admin.iotingdev.com` «sobre IAM Identity Center».
