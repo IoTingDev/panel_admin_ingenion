@@ -1,0 +1,52 @@
+name: CI
+
+# CI minimo del panel (herramienta interna, ADR-0045 propuesto). Corre en cada PR y en cada push a
+# main: codificacion (sin BOM ni texto corrupto), lint, formato, tipos y construccion, y pruebas
+# unitarias. NO corre E2E ni la comparacion visual (Playwright): son locales y se declaran como tales.
+# Que BLOQUEE el merge depende de marcar este job como verificacion requerida en la proteccion de la
+# rama main (configuracion del repositorio, no de este archivo).
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    name: Codificacion, lint, formato, build y pruebas
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el codigo
+        uses: actions/checkout@v4
+
+      - name: Instalar Node (para la compuerta de codificacion)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # Contraprueba del instrumento ANTES de usarlo, y luego el repositorio.
+      - name: Compuerta de codificacion (contrapruebas)
+        run: node --test scripts/codificacion/verificar.test.mjs
+
+      - name: Compuerta de codificacion (repositorio)
+        run: node scripts/codificacion/verificar.mjs .
+
+      - name: Instalar Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Instalar dependencias (lockfile congelado)
+        run: bun install --frozen-lockfile
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Formato
+        run: bun run format:check
+
+      - name: Pruebas unitarias
+        run: bun run test
+
+      - name: Construir
+        run: bun run build
