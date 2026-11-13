@@ -75,6 +75,9 @@ export function UsuariosView({ clienteId = "" }: { clienteId?: string }) {
           </Button>
         }
       />
+      <p className="-mt-3 mb-4 text-xs text-muted-foreground" data-testid="aviso-registro-interno">
+        Registro interno; aún no crea cuentas en el portal.
+      </p>
       <div className="mb-5 flex flex-wrap gap-3">
         <SearchInput value={search} onChange={setSearch} placeholder="Buscar nombre o correo…" />
         {!clienteId && (

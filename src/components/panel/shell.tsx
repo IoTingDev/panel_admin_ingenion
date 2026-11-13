@@ -49,6 +49,7 @@ import {
 import { Logo, DemoBadge } from "./common";
 import { useUi } from "./ui-context";
 import { MovimientoDialog } from "./movimiento-dialog";
+import { AvisoConexion } from "@/components/panel/aviso-conexion";
 import { cn } from "@/lib/utils";
 
 const sections: {
@@ -276,6 +277,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
+        <AvisoConexion />
         <main className="mx-auto max-w-[1600px] px-4 py-7 md:px-7 lg:px-8">{children}</main>
         <footer className="flex justify-between border-t px-8 py-4 text-[10px] text-muted-foreground">
           <span>IoTing Dev · Consola interna</span>

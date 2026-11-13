@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { z } from "zod";
 import { ThemeProvider } from "next-themes";
-import { api } from "@/lib/api";
+import { api, API_MODE } from "@/lib/api";
 import { Logo } from "@/components/panel/common";
 import { pageHead } from "@/lib/meta";
 import { Button } from "@/components/ui/button";
@@ -74,37 +74,70 @@ function Login() {
             </div>
             <p className="eyebrow">Acceso</p>
             <h2 className="mt-1 font-display text-2xl font-bold">Iniciar sesión</h2>
-            <p className="mb-6 mt-2 text-sm text-muted-foreground">
-              Demostración: cualquier contraseña de 4+ caracteres.
-            </p>
-            <div className="space-y-2">
-              <Label htmlFor="email">Correo</Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="username"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div className="mt-4 space-y-2">
-              <Label htmlFor="password">Contraseña</Label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-            {error && (
-              <p role="alert" className="mt-3 text-sm text-destructive">
-                {error}
-              </p>
+            {API_MODE === "api" ? (
+              <>
+                <p className="mb-6 mt-2 text-sm text-muted-foreground">
+                  El ingreso se hace con su cuenta corporativa desde el portal de acceso, con
+                  verificación en dos pasos.
+                </p>
+                <Button
+                  type="button"
+                  className="w-full"
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    setError("");
+                    try {
+                      await api.auth.login("", "");
+                    } catch (x) {
+                      setError((x as Error).message);
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  {busy ? "Redirigiendo al portal…" : "Iniciar sesión"}
+                </Button>
+                {error && (
+                  <p role="alert" className="mt-3 text-sm text-destructive">
+                    {error}
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <p className="mb-6 mt-2 text-sm text-muted-foreground">
+                  Demostración: cualquier contraseña de 4+ caracteres.
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Correo</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    autoComplete="username"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+                <div className="mt-4 space-y-2">
+                  <Label htmlFor="password">Contraseña</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
+                {error && (
+                  <p role="alert" className="mt-3 text-sm text-destructive">
+                    {error}
+                  </p>
+                )}
+                <Button className="mt-6 w-full" disabled={busy}>
+                  {busy ? "Ingresando…" : "Ingresar al panel"}
+                </Button>
+              </>
             )}
-            <Button className="mt-6 w-full" disabled={busy}>
-              {busy ? "Ingresando…" : "Ingresar al panel"}
-            </Button>
           </form>
         </main>
       </div>

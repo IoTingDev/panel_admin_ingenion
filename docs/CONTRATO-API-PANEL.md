@@ -298,6 +298,25 @@ Todas son asíncronas. «Audita» = escribe un evento (§7). Los errores se desc
 | `limpiarDemo(confirmacion)`                    | Exige la frase exacta `ELIMINAR DEMO` (§5.7).                                                                                                                                                                                |
 | `respaldo.exportar / previsualizar / importar` | Solo mock. `previsualizar` valida sin aplicar y compara conteos (hoy vs respaldo). `importar` reemplaza toda la base y audita. Rechaza con `Respaldo inválido: …` formato desconocido, versión futura o listas mal formadas. |
 
+### 3.7bis Diferencias del backend frente al mock (decididas el 2026-11-13)
+
+Si una regla del backend difiere del mock, es un **defecto del contrato** y se documenta aquí. Hoy:
+
+- **Movimientos de inventario inmutables.** Sin editar ni borrar (permisos y disparador en la base); se
+  corrige con un movimiento compensatorio. Consecuencia: `limpiarDemo` **no elimina movimientos** (en el
+  mock sí los eliminaba) y devuelve `movimientos: 0`.
+- **`respaldo.importar` solo admite un ámbito VACÍO** y **no importa registros de demostración**
+  (`esDemo`): sus movimientos no se podrían borrar después. Es la migración única de los datos del
+  navegador al backend: todo o nada (una transacción), con vista previa. En un ámbito con datos se rechaza
+  (409, «El ámbito ya tiene datos…»). La auditoría del respaldo se anexa; los identificadores deben ser UUID.
+- **Sesión.** `POST /v1/auth/sesion` devuelve al operador de la sesión vigente (401 sin sesión) y
+  `POST /v1/auth/salir` caduca las cookies. No hay usuario y contraseña propios: el ingreso es corporativo
+  (IAM Identity Center, ADR-0046). La sesión viaja en una cookie `HttpOnly` y el cliente repite el valor
+  anti-CSRF (cookie `panel_csrf`) en `x-csrf-token`.
+- **503 reintentable.** Mientras la base de datos se reanuda tras una pausa, la API responde
+  `503 {"mensaje":"Despertando la base de datos…","reintentable":true}` con `Retry-After`. El cliente
+  reintenta con pausas crecientes hasta unos 90 s y muestra «Despertando la base de datos…».
+
 ### 3.8 `AuditoriaApi`
 
 `list()`, `registrar(data)`. Inmutable: no hay operaciones de edición ni borrado.
