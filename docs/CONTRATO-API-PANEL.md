@@ -6,9 +6,9 @@ cumplir para reemplazarla **sin tocar la interfaz**.
 
 - **Fuente de verdad de los tipos:** [`src/lib/api/types.ts`](../src/lib/api/types.ts). Este
   documento la explica; si discrepan, manda el código y este documento se corrige.
-- **Fuente de verdad del comportamiento:** las pruebas de `src/test/*.test.ts` (unitarias,
-  contra el mock) y `tests/e2e/*.spec.ts` (de extremo a extremo). Un backend nuevo debe pasar el
-  mismo conjunto de reglas.
+- **Fuente de verdad del comportamiento:** la **suite de contrato** (`src/test/contrato/`), más las
+  pruebas de `src/test/*.test.ts` (unitarias, contra el mock) y `tests/e2e/*.spec.ts` (de extremo a
+  extremo). Un backend nuevo debe pasar la suite de contrato.
 - **Idioma:** español, como el resto de la serie documental. **Moneda:** COP, entero. **Zona
   horaria del negocio:** `America/Bogota`.
 
@@ -19,12 +19,36 @@ cumplir para reemplazarla **sin tocar la interfaz**.
 La interfaz solo habla con `api` (`src/lib/api/index.ts`), que implementa `Api` de `types.ts`.
 Ningún componente toca `localStorage`.
 
-| Variable            | Valores                      | Estado                                                                                                                                                      |
-| ------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `VITE_API_MODE`     | `mock` (por defecto) o `api` | `api` **no tiene implementación**: hoy escribe una advertencia en consola y usa el mock. Es el **único punto de cambio**: ahí se enchufará el cliente HTTP. |
-| `VITE_API_BASE_URL` | URL base del backend         | Declarada y mostrada en Configuración; sin uso todavía.                                                                                                     |
+| Variable            | Valores                      | Estado                                                                                                                                                                                                                                  |
+| ------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `VITE_API_MODE`     | `mock` (por defecto) o `api` | `mock` es la capa simulada de siempre y **no cambia**. `api` usa el **cliente HTTP** (`src/lib/api/http/`) con un proveedor de credenciales inyectable que hoy **lanza «no configurado»**: sin credenciales no se hace ninguna llamada. |
+| `VITE_API_BASE_URL` | URL base del backend         | La usa el cliente HTTP. Vacía → el cliente falla con «no configurado» sin llamar.                                                                                                                                                       |
 
-**Alcance de este documento:** contrato y reglas. **No** implementa el modo `api`.
+**Qué es el cliente HTTP y qué NO es.** Es un adaptador delgado: cada operación de `types.ts`
+(salvo `auth`) se traduce en una llamada y la respuesta se devuelve tal cual. Traduce los estados
+HTTP a los errores de §8 (`ErrorApi` con `codigo`: `no_encontrado` 404, `validacion` 400/422,
+`regla_negocio` 409, `sin_sesion` 401, `sin_permiso` 403, `red`, `no_configurado`, `desconocido`) y
+**conserva el mensaje del servidor**. **No inventa nada del backend:**
+
+- **Rutas.** El contrato no define endpoints. El cliente usa una **convención provisional propia**,
+  derivada mecánicamente de los nombres de `types.ts`: `POST {VITE_API_BASE_URL}/{interfaz}/{operación}`
+  con cuerpo `{ "args": [...] }` y respuesta `{ "resultado": ... }` (error: `{ "mensaje": "..." }`). **No es el
+  diseño de endpoints del backend**: ese diseño es la propuesta de Fase 2, y se inyecta con
+  `construirUrl` sin tocar el resto.
+- **Credenciales.** `AuthTokenProvider.getToken()` es un puerto. Su implementación real **queda
+  pendiente del ADR de identidad** (§1 punto 2). El cliente envía `Authorization: Bearer <token>`
+  (estándar de los autorizadores JWT); confirmarlo forma parte de ese ADR.
+- **`AuthApi` en modo `api`** es un puerto pendiente: `currentUser()` devuelve `null` (la interfaz
+  muestra el ingreso) y `login()` explica que el ingreso no está configurado.
+
+**Pruebas de contrato.** `src/test/contrato/suite.ts` es **una sola suite parametrizada** por la
+implementación de `Api` (reglas e invariantes de §5 y §6 usando solo `types.ts`). Se ejecuta hoy contra
+`mock` y contra el cliente HTTP servido por un **servidor de prueba local** (`servidor-fixture.ts`, sin
+AWS). La ejecución contra el **backend real está definida y omitida: «backend no disponible»**. Un backend
+nuevo debe pasar esa suite.
+
+**Alcance de este documento:** contrato y reglas. El backend, su infraestructura y la identidad real
+**no están implementados** (Fase 2, chat de arquitectura).
 
 ---
 
