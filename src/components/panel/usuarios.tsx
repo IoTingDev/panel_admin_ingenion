@@ -1,21 +1,274 @@
-import { useState } from 'react';
-import { Users, UserPlus, Ban, Trash2, RotateCcw } from 'lucide-react';
-import { api, type Estado, type UsuarioCliente, type RolUsuario } from '@/lib/api';
-import { useUsuarios, useClientes, useApiMutation } from '@/hooks/use-api';
-import { fmtFechaHora } from '@/lib/format';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import { PageHeader, StatusBadge, EmptyState } from './common';
-import { DataFrame, SearchInput, FilterSelect, usePagination, Loading } from './data-tools';
-import { ConfirmDialog, type ConfirmState } from './confirm-dialog';
+import { useState } from "react";
+import { Users, UserPlus, Ban, Trash2, RotateCcw } from "lucide-react";
+import { api, type Estado, type UsuarioCliente, type RolUsuario } from "@/lib/api";
+import { useUsuarios, useClientes, useApiMutation } from "@/hooks/use-api";
+import { fmtFechaHora } from "@/lib/format";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import { PageHeader, StatusBadge, EmptyState } from "./common";
+import { DataFrame, SearchInput, FilterSelect, usePagination, Loading } from "./data-tools";
+import { ConfirmDialog, type ConfirmState } from "./confirm-dialog";
 
-export function UsuariosView({ clienteId = '' }: { clienteId?:string }) {
-  const { data:usuarios=[],isLoading }=useUsuarios(); const { data:clientes=[] }=useClientes(); const [search,setSearch]=useState(''); const [cl,setCl]=useState(clienteId); const [rol,setRol]=useState(''); const [estado,setEstado]=useState(''); const [open,setOpen]=useState(false); const [confirm,setConfirm]=useState<ConfirmState|null>(null); const [inviteCl,setInviteCl]=useState(clienteId); const [nombre,setNombre]=useState(''); const [email,setEmail]=useState(''); const [inviteRol,setInviteRol]=useState<RolUsuario>('operador');
-  const stateMutation=useApiMutation(({id,estado,motivo}:{id:string;estado:Estado;motivo:string}) => api.usuarios.cambiarEstado(id,estado,motivo),'Estado actualizado'); const roleMutation=useApiMutation(({id,rol}:{id:string;rol:RolUsuario}) => api.usuarios.cambiarRol(id,rol),'Rol actualizado'); const invite=useApiMutation(api.usuarios.invitar,'Invitación enviada (simulada)');
-  const ask=(u:UsuarioCliente,estado:Estado) => setConfirm({ title:estado==='baja'?'Dar de baja usuario':estado==='activo'?'Reactivar usuario':'Suspender usuario',description:`${u.nombre} ${estado==='activo'?'recuperará':'perderá'} el acceso al portal de su cliente.`,confirmLabel:'Confirmar',destructive:estado==='baja',onConfirm:motivo => stateMutation.mutateAsync({id:u.id,estado,motivo}) });
-  const rows=usuarios.filter(u => (!cl || u.clienteId===cl) && (!rol || u.rol===rol) && (!estado || u.estado===estado) && `${u.nombre} ${u.email}`.toLowerCase().includes(search.toLowerCase())); const pg=usePagination(rows);
-  if(isLoading) return <Loading/>;
-  return <><PageHeader eyebrow="Gestión" title="Usuarios" subtitle="Acceso de los equipos de sus clientes." actions={<Button onClick={() => setOpen(true)}><UserPlus/>Invitar usuario</Button>}/><div className="mb-5 flex flex-wrap gap-3"><SearchInput value={search} onChange={setSearch} placeholder="Buscar nombre o correo…"/>{!clienteId && <FilterSelect label="Todos los clientes" value={cl} onChange={setCl} options={clientes.map(c => ({value:c.id,label:c.razonSocial}))}/>}<FilterSelect label="Todos los roles" value={rol} onChange={setRol} options={['administrador','operador','lectura']}/><FilterSelect label="Todos los estados" value={estado} onChange={setEstado} options={['activo','suspendido','baja']}/></div><DataFrame footer={pg.footer}><table className="data-table"><thead><tr><th>Usuario</th><th>Cliente</th><th>Rol</th><th>Estado</th><th>Último acceso</th><th/></tr></thead><tbody>{pg.rows.map(u => <tr key={u.id}><td><div className="flex gap-3 items-center"><span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-xs font-semibold text-primary">{u.nombre.split(' ').slice(0,2).map(n => n[0]).join('')}</span><div><p className="font-semibold">{u.nombre}</p><p className="mt-1 text-xs text-muted-foreground">{u.email}</p></div></div></td><td className="max-w-44">{clientes.find(c => c.id===u.clienteId)?.razonSocial}</td><td><select aria-label={`Rol de ${u.nombre}`} className="app-select" value={u.rol} onChange={e => { const next=e.target.value as RolUsuario; setConfirm({ title:'Cambiar rol',description:`El rol de ${u.nombre} cambiará de ${u.rol} a ${next}.`,confirmLabel:'Cambiar rol',requireReason:false,onConfirm:() => roleMutation.mutateAsync({id:u.id,rol:next}) }); }}>{['administrador','operador','lectura'].map(r => <option key={r}>{r}</option>)}</select></td><td><StatusBadge estado={u.estado}/></td><td className="whitespace-nowrap text-xs text-muted-foreground">{fmtFechaHora(u.ultimoAcceso)}</td><td><div className="flex">{u.estado==='activo' ? <Button title="Suspender" size="icon" variant="ghost" onClick={() => ask(u,'suspendido')}><Ban/></Button> : <Button title="Reactivar" size="icon" variant="ghost" onClick={() => ask(u,'activo')}><RotateCcw/></Button>}{u.estado!=='baja' && <Button title="Dar de baja" size="icon" variant="ghost" onClick={() => ask(u,'baja')}><Trash2 className="text-destructive"/></Button>}</div></td></tr>)}</tbody></table>{!rows.length && <EmptyState icon={Users} title="Sin usuarios para estos filtros"/>}</DataFrame><ConfirmDialog state={confirm} onClose={() => setConfirm(null)}/><Sheet open={open} onOpenChange={setOpen}><SheetContent><SheetHeader><SheetTitle>Invitar usuario</SheetTitle><SheetDescription>La invitación se registrará como una acción simulada.</SheetDescription></SheetHeader><form className="mt-6 space-y-4" onSubmit={async e => {e.preventDefault();await invite.mutateAsync({clienteId:inviteCl,nombre,email,rol:inviteRol});setOpen(false);setNombre('');setEmail('');}}><Label htmlFor="i-cl">Cliente</Label><select id="i-cl" className="app-select w-full" required value={inviteCl} onChange={e => setInviteCl(e.target.value)}><option value="">Seleccione cliente</option>{clientes.filter(c => c.estado==='activo').map(c => <option key={c.id} value={c.id}>{c.razonSocial}</option>)}</select><Label htmlFor="i-name">Nombre</Label><Input id="i-name" minLength={3} required value={nombre} onChange={e => setNombre(e.target.value)}/><Label htmlFor="i-email">Correo</Label><Input id="i-email" type="email" required value={email} onChange={e => setEmail(e.target.value)}/><Label htmlFor="i-rol">Rol</Label><select id="i-rol" className="app-select w-full" value={inviteRol} onChange={e => setInviteRol(e.target.value as RolUsuario)}>{['administrador','operador','lectura'].map(r => <option key={r}>{r}</option>)}</select><div className="flex justify-end gap-2 border-t pt-4"><Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button><Button disabled={invite.isPending}>Enviar invitación</Button></div></form></SheetContent></Sheet></>;
+export function UsuariosView({ clienteId = "" }: { clienteId?: string }) {
+  const { data: usuarios = [], isLoading } = useUsuarios();
+  const { data: clientes = [] } = useClientes();
+  const [search, setSearch] = useState("");
+  const [cl, setCl] = useState(clienteId);
+  const [rol, setRol] = useState("");
+  const [estado, setEstado] = useState("");
+  const [open, setOpen] = useState(false);
+  const [confirm, setConfirm] = useState<ConfirmState | null>(null);
+  const [inviteCl, setInviteCl] = useState(clienteId);
+  const [nombre, setNombre] = useState("");
+  const [email, setEmail] = useState("");
+  const [inviteRol, setInviteRol] = useState<RolUsuario>("operador");
+  const stateMutation = useApiMutation(
+    ({ id, estado, motivo }: { id: string; estado: Estado; motivo: string }) =>
+      api.usuarios.cambiarEstado(id, estado, motivo),
+    "Estado actualizado",
+  );
+  const roleMutation = useApiMutation(
+    ({ id, rol }: { id: string; rol: RolUsuario }) => api.usuarios.cambiarRol(id, rol),
+    "Rol actualizado",
+  );
+  const invite = useApiMutation(api.usuarios.invitar, "Invitación enviada (simulada)");
+  const ask = (u: UsuarioCliente, estado: Estado) =>
+    setConfirm({
+      title:
+        estado === "baja"
+          ? "Dar de baja usuario"
+          : estado === "activo"
+            ? "Reactivar usuario"
+            : "Suspender usuario",
+      description: `${u.nombre} ${estado === "activo" ? "recuperará" : "perderá"} el acceso al portal de su cliente.`,
+      confirmLabel: "Confirmar",
+      destructive: estado === "baja",
+      onConfirm: (motivo) => stateMutation.mutateAsync({ id: u.id, estado, motivo }),
+    });
+  const rows = usuarios.filter(
+    (u) =>
+      (!cl || u.clienteId === cl) &&
+      (!rol || u.rol === rol) &&
+      (!estado || u.estado === estado) &&
+      `${u.nombre} ${u.email}`.toLowerCase().includes(search.toLowerCase()),
+  );
+  const pg = usePagination(rows);
+  if (isLoading) return <Loading />;
+  return (
+    <>
+      <PageHeader
+        eyebrow="Gestión"
+        title="Usuarios"
+        subtitle="Acceso de los equipos de sus clientes."
+        actions={
+          <Button onClick={() => setOpen(true)}>
+            <UserPlus />
+            Invitar usuario
+          </Button>
+        }
+      />
+      <div className="mb-5 flex flex-wrap gap-3">
+        <SearchInput value={search} onChange={setSearch} placeholder="Buscar nombre o correo…" />
+        {!clienteId && (
+          <FilterSelect
+            label="Todos los clientes"
+            value={cl}
+            onChange={setCl}
+            options={clientes.map((c) => ({ value: c.id, label: c.razonSocial }))}
+          />
+        )}
+        <FilterSelect
+          label="Todos los roles"
+          value={rol}
+          onChange={setRol}
+          options={["administrador", "operador", "lectura"]}
+        />
+        <FilterSelect
+          label="Todos los estados"
+          value={estado}
+          onChange={setEstado}
+          options={["activo", "suspendido", "baja"]}
+        />
+      </div>
+      <DataFrame footer={pg.footer}>
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Usuario</th>
+              <th>Cliente</th>
+              <th>Rol</th>
+              <th>Estado</th>
+              <th>Último acceso</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {pg.rows.map((u) => (
+              <tr key={u.id}>
+                <td>
+                  <div className="flex gap-3 items-center">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-xs font-semibold text-primary">
+                      {u.nombre
+                        .split(" ")
+                        .slice(0, 2)
+                        .map((n) => n[0])
+                        .join("")}
+                    </span>
+                    <div>
+                      <p className="font-semibold">{u.nombre}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{u.email}</p>
+                    </div>
+                  </div>
+                </td>
+                <td className="max-w-44">
+                  {clientes.find((c) => c.id === u.clienteId)?.razonSocial}
+                </td>
+                <td>
+                  <select
+                    aria-label={`Rol de ${u.nombre}`}
+                    className="app-select"
+                    value={u.rol}
+                    onChange={(e) => {
+                      const next = e.target.value as RolUsuario;
+                      setConfirm({
+                        title: "Cambiar rol",
+                        description: `El rol de ${u.nombre} cambiará de ${u.rol} a ${next}.`,
+                        confirmLabel: "Cambiar rol",
+                        requireReason: false,
+                        onConfirm: () => roleMutation.mutateAsync({ id: u.id, rol: next }),
+                      });
+                    }}
+                  >
+                    {["administrador", "operador", "lectura"].map((r) => (
+                      <option key={r}>{r}</option>
+                    ))}
+                  </select>
+                </td>
+                <td>
+                  <StatusBadge estado={u.estado} />
+                </td>
+                <td className="whitespace-nowrap text-xs text-muted-foreground">
+                  {fmtFechaHora(u.ultimoAcceso)}
+                </td>
+                <td>
+                  <div className="flex">
+                    {u.estado === "activo" ? (
+                      <Button
+                        title="Suspender"
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => ask(u, "suspendido")}
+                      >
+                        <Ban />
+                      </Button>
+                    ) : (
+                      <Button
+                        title="Reactivar"
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => ask(u, "activo")}
+                      >
+                        <RotateCcw />
+                      </Button>
+                    )}
+                    {u.estado !== "baja" && (
+                      <Button
+                        title="Dar de baja"
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => ask(u, "baja")}
+                      >
+                        <Trash2 className="text-destructive" />
+                      </Button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {!rows.length && <EmptyState icon={Users} title="Sin usuarios para estos filtros" />}
+      </DataFrame>
+      <ConfirmDialog state={confirm} onClose={() => setConfirm(null)} />
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Invitar usuario</SheetTitle>
+            <SheetDescription>
+              La invitación se registrará como una acción simulada.
+            </SheetDescription>
+          </SheetHeader>
+          <form
+            className="mt-6 space-y-4"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              await invite.mutateAsync({ clienteId: inviteCl, nombre, email, rol: inviteRol });
+              setOpen(false);
+              setNombre("");
+              setEmail("");
+            }}
+          >
+            <Label htmlFor="i-cl">Cliente</Label>
+            <select
+              id="i-cl"
+              className="app-select w-full"
+              required
+              value={inviteCl}
+              onChange={(e) => setInviteCl(e.target.value)}
+            >
+              <option value="">Seleccione cliente</option>
+              {clientes
+                .filter((c) => c.estado === "activo")
+                .map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.razonSocial}
+                  </option>
+                ))}
+            </select>
+            <Label htmlFor="i-name">Nombre</Label>
+            <Input
+              id="i-name"
+              minLength={3}
+              required
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+            />
+            <Label htmlFor="i-email">Correo</Label>
+            <Input
+              id="i-email"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <Label htmlFor="i-rol">Rol</Label>
+            <select
+              id="i-rol"
+              className="app-select w-full"
+              value={inviteRol}
+              onChange={(e) => setInviteRol(e.target.value as RolUsuario)}
+            >
+              {["administrador", "operador", "lectura"].map((r) => (
+                <option key={r}>{r}</option>
+              ))}
+            </select>
+            <div className="flex justify-end gap-2 border-t pt-4">
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                Cancelar
+              </Button>
+              <Button disabled={invite.isPending}>Enviar invitación</Button>
+            </div>
+          </form>
+        </SheetContent>
+      </Sheet>
+    </>
+  );
 }
