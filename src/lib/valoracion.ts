@@ -295,11 +295,15 @@ export function detalleValor(a: {
 export interface ValorPorTipo {
   /** Existencia a costo total (suma de los tres tipos). */
   total: number;
+  /** Total si Herramientas y Equipos se muestran depreciados (Componentes por su costo). Opcional en pantalla. */
+  totalDepreciado: number;
+  /** Ítems con valor, de un grupo que se deprecia, pero sin año de compra: no se deprecian. */
+  sinAnioCompra: number;
   /** Ítems (sin los dados de baja) que tienen valor cargado. */
   conValor: number;
   /** Ítems (sin los dados de baja), con o sin valor cargado. */
   totalItems: number;
-  filas: { grupo: GrupoInventario; valor: number; pct: number }[];
+  filas: { grupo: GrupoInventario; valor: number; pct: number; depreciado: number }[];
 }
 
 /**
@@ -314,14 +318,24 @@ export function valorPorTipo(a: {
   anioActual: number;
 }): ValorPorTipo {
   const r = resumenValor(a);
+  const sinAnioCompra = a.items.filter(
+    (i) =>
+      i.estado !== "Baja" &&
+      i.valorUnitario != null &&
+      i.anioCompra == null &&
+      vidaUtil(i, a.params) !== null,
+  ).length;
   return {
     total: r.existencia,
+    totalDepreciado: r.estimado,
+    sinAnioCompra,
     conValor: r.conValor,
     totalItems: r.conValor + r.sinValor,
     filas: GRUPOS.map((g) => ({
       grupo: g,
       valor: r.porGrupo[g].existencia,
       pct: r.existencia > 0 ? (r.porGrupo[g].existencia / r.existencia) * 100 : 0,
+      depreciado: r.porGrupo[g].estimado,
     })),
   };
 }

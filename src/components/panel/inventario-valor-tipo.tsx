@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useConfiguracion } from "@/hooks/use-api";
 import type { ItemInventario, MovimientoInventario } from "@/lib/api";
 import { ROTULO_GRUPO } from "@/lib/config-inventario";
@@ -10,6 +11,16 @@ export const COLOR_TIPO = {
   herramientas: "var(--warning)",
   equipos: "var(--success)",
 } as const;
+
+const CLAVE_DEPRECIADO = "ioting.panel.valor-depreciado.v1";
+/** Preferencia de pantalla (solo en este navegador): ver o no el valor depreciado. Por defecto, no. */
+function leerPreferencia(): boolean {
+  try {
+    return window.localStorage.getItem(CLAVE_DEPRECIADO) === "1";
+  } catch {
+    return false;
+  }
+}
 
 const fmtPct = (n: number) =>
   `${new Intl.NumberFormat("es-CO", { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(n)} %`;
@@ -26,7 +37,18 @@ export function ValorInventarioPorTipo({
   movs: MovimientoInventario[];
 }) {
   const { data: config } = useConfiguracion();
+  const [verDepreciado, setVerDepreciado] = useState(leerPreferencia);
   if (!config) return null;
+  const alternar = () => {
+    const nuevo = !verDepreciado;
+    setVerDepreciado(nuevo);
+    try {
+      window.localStorage.setItem(CLAVE_DEPRECIADO, nuevo ? "1" : "0");
+    } catch {
+      /* sin almacenamiento: la preferencia vale solo para esta visita */
+    }
+  };
+  const dep = config.inventario.depreciacion;
   const v = valorPorTipo({
     items,
     movs,
@@ -46,9 +68,21 @@ export function ValorInventarioPorTipo({
             Cuánto vale hoy lo que tiene la empresa en existencia
           </p>
         </div>
-        <span className="rounded-md border px-2.5 py-1 text-xs text-muted-foreground">
-          Existencia a costo
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={verDepreciado}
+            data-testid="alternar-depreciado"
+            onClick={alternar}
+            className="rounded-md border px-2.5 py-1 text-xs font-medium text-primary hover:bg-muted"
+          >
+            {verDepreciado ? "Ocultar valor depreciado" : "Ver valor depreciado"}
+          </button>
+          <span className="rounded-md border px-2.5 py-1 text-xs text-muted-foreground">
+            Existencia a costo
+          </span>
+        </div>
       </div>
       <p className="mt-4 text-xs text-muted-foreground">Valor total</p>
       <p className="font-display text-3xl font-bold tracking-tight" data-testid="valor-total-tipo">
@@ -70,9 +104,35 @@ export function ValorInventarioPorTipo({
                 style={{ width: `${f.pct}%`, background: COLOR_TIPO[f.grupo] }}
               />
             </div>
+            {verDepreciado && f.grupo !== "componentes" && (
+              <p
+                data-testid={`depreciado-${f.grupo}`}
+                className="mt-1 text-xs text-muted-foreground"
+              >
+                Depreciado: <span className="font-semibold">{fmtCop(f.depreciado)}</span> · conserva{" "}
+                {fmtPct(f.valor > 0 ? (f.depreciado / f.valor) * 100 : 100)}
+              </p>
+            )}
           </li>
         ))}
       </ul>
+      {verDepreciado && (
+        <div
+          data-testid="detalle-depreciado"
+          className="mt-4 rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground"
+        >
+          <p>
+            Con Herramientas y Equipos depreciados, el valor total sería{" "}
+            <span className="font-semibold text-foreground">{fmtCop(v.totalDepreciado)}</span>.
+          </p>
+          <p className="mt-1">
+            Depreciación lineal: vida útil de {dep.aniosPorGrupo.herramientas ?? "—"} años en
+            herramientas y {dep.aniosPorGrupo.equipos ?? "—"} en equipos; conserva como mínimo{" "}
+            {dep.residualPct} %. {v.sinAnioCompra} ítems con valor no tienen año de compra y no se
+            deprecian. Se ajusta en Configuración.
+          </p>
+        </div>
+      )}
       <p
         data-testid="aviso-valor-tipo"
         className="mt-4 rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground"

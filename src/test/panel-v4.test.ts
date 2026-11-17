@@ -341,3 +341,69 @@ describe("Parte F — valor del inventario por tipo", () => {
     }
   });
 });
+
+describe("Depreciación ajustada (panel v4.1)", () => {
+  const params = CONFIG_INVENTARIO_DEFECTO.depreciacion;
+  const it_ = (
+    sku: string,
+    grupo: ItemInventario["grupo"],
+    cant: number,
+    valor: number | null,
+    anio: number | null,
+  ): ItemInventario => ({
+    sku,
+    grupo,
+    categoria: "x",
+    subcategoria: "y",
+    descripcion: sku,
+    marca_referencia: "",
+    cantidad_inicial: cant,
+    unidad: "und",
+    estado: "Disponible",
+    ubicacion: "",
+    stock_minimo: null,
+    notas: "",
+    valorUnitario: valor,
+    anioCompra: anio,
+  });
+  it("los parámetros por defecto son 10 años (herramientas y equipos) y 30 % residual", () => {
+    expect(params.aniosPorGrupo).toEqual({ componentes: null, herramientas: 10, equipos: 10 });
+    expect(params.residualPct).toBe(30);
+  });
+  it("un equipo de 4 años conserva 60 % (antes 20 %), y nunca baja del residual", () => {
+    const eq = valorPorTipo({
+      items: [it_("E-1", "equipos", 1, 1_000_000, 2022)],
+      movs: [],
+      params,
+      anioActual: 2026,
+    });
+    expect(eq.filas.find((f) => f.grupo === "equipos")?.depreciado).toBe(600_000);
+    const viejo = valorPorTipo({
+      items: [it_("E-2", "equipos", 1, 1_000_000, 1990)],
+      movs: [],
+      params,
+      anioActual: 2026,
+    });
+    expect(viejo.filas.find((f) => f.grupo === "equipos")?.depreciado).toBe(300_000);
+  });
+  it("valor depreciado por tipo: herramientas y equipos se deprecian, componentes no; sin año de compra no se deprecia", () => {
+    const r = valorPorTipo({
+      items: [
+        it_("A-1", "componentes", 10, 1000, 2015), // componentes: no se deprecian (10.000)
+        it_("H-1", "herramientas", 2, 5000, 2021), // 10.000 × (1 − 5/10) = 5.000
+        it_("H-2", "herramientas", 1, 10000, null), // sin año: 10.000 completos
+        it_("E-1", "equipos", 1, 20000, 2022), // 20.000 × 0,6 = 12.000
+      ],
+      movs: [],
+      params,
+      anioActual: 2026,
+    });
+    const f = (g: string) => r.filas.find((x) => x.grupo === g);
+    expect([f("componentes")?.valor, f("componentes")?.depreciado]).toEqual([10000, 10000]);
+    expect([f("herramientas")?.valor, f("herramientas")?.depreciado]).toEqual([20000, 15000]);
+    expect([f("equipos")?.valor, f("equipos")?.depreciado]).toEqual([20000, 12000]);
+    expect(r.total).toBe(50000); // el costo no cambia
+    expect(r.totalDepreciado).toBe(37000);
+    expect(r.sinAnioCompra).toBe(1); // H-2; el componente no cuenta (no se deprecia)
+  });
+});

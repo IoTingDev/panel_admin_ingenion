@@ -214,8 +214,8 @@ cambios de modelo** en la v2: solo se amplía la cascada (§5.4).
 - `inventario.categorias`: `Record<grupo, string[]>`.
 - `inventario.prefijos`: `Record<categoria, "ABC">` — tres letras mayúsculas; **varias categorías pueden compartir prefijo**.
 - `inventario.depreciacion.aniosPorGrupo`: `Record<grupo, number | null>` (null = no se deprecia).
-  Por defecto: componentes `null`, herramientas 5, equipos 5. (Tres claves: `seguridad` ya no existe.)
-- `inventario.depreciacion.residualPct`: 0..100 (por defecto 10).
+  Por defecto (panel v4.1): componentes `null`, herramientas 10, equipos 10 (antes 5 y 5). (Tres claves: `seguridad` ya no existe.)
+- `inventario.depreciacion.residualPct`: 0..100 (por defecto 30 desde el panel v4.1; antes 10).
 - `sectores`: `string[]` (por defecto, desde el panel v4: Agroindustrial, residencial, comercial,
   industrial, institucional, otro). Antes de la v4 incluía cacao, café y mango; esos registros pasaron a
   «Agroindustrial» (§10).
