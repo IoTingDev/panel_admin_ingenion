@@ -219,7 +219,7 @@ export function TrabajoSheet({
               [
                 ["fechaProgramada", "Fecha programada"],
                 ["fechaInicio", "Fecha de inicio"],
-                ["fechaFin", "Fecha de fin"],
+                ["fechaFin", "Fecha de entrega"],
               ] as const
             ).map(([k, label]) => (
               <div key={k} className="space-y-2">

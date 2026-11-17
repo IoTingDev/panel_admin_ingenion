@@ -258,7 +258,19 @@ export function TrabajosView({ clienteId = "" }: { clienteId?: string }) {
                     <Estado t={t} />
                   </td>
                   <td className="whitespace-nowrap" data-testid="entrega-servicio">
-                    {diaEntrega(t) ? fmtFecha(t.fechaFin) : "—"}
+                    {diaEntrega(t) ? (
+                      fmtFecha(t.fechaFin)
+                    ) : t.fechaProgramada ? (
+                      <span
+                        className="text-muted-foreground"
+                        title="Fecha programada (aún sin entregar)"
+                        data-testid="programada-servicio"
+                      >
+                        {fmtFecha(t.fechaProgramada)}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
                   </td>
                 </tr>
               ))}
@@ -382,7 +394,7 @@ export function TrabajoDetail({ id }: { id: string }) {
               {dato("Responsable", t.responsable)}
               {dato("Programado", t.fechaProgramada ? fmtFecha(t.fechaProgramada) : undefined)}
               {dato("Inicio", t.fechaInicio ? fmtFecha(t.fechaInicio) : undefined)}
-              {dato("Fin", t.fechaFin ? fmtFecha(t.fechaFin) : undefined)}
+              {dato("Fecha de entrega", t.fechaFin ? fmtFecha(t.fechaFin) : undefined)}
               {dato(
                 "Valor pactado",
                 t.valorPactado === undefined ? undefined : fmtCop(t.valorPactado),
