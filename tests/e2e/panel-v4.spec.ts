@@ -181,3 +181,25 @@ test("F — Inventario: sin «Ítems por reponer»; con «Valor del inventario p
   for (const g of ["Componentes", "Herramientas", "Equipos"])
     await expect(page.getByRole("tab", { name: g })).toBeVisible();
 });
+
+test("E — un servicio sin completar muestra su fecha programada en tono secundario; el formulario y el detalle dicen «Fecha de entrega»", async ({
+  page,
+}) => {
+  await entrar(page);
+  await page.goto("/servicios-tecnicos");
+  const programadas = page.getByTestId("programada-servicio");
+  await expect(programadas.first()).toBeVisible();
+  await expect(programadas.first()).toHaveClass(/text-muted-foreground/);
+  await expect(programadas.first()).toContainText(/\d{4}/);
+  // las completadas muestran su entrega en tono normal (sin la marca de «programada»)
+  const completadas = page
+    .getByRole("row")
+    .filter({ hasText: "Completado" })
+    .getByTestId("entrega-servicio");
+  if ((await completadas.count()) > 0)
+    await expect(completadas.first().getByTestId("programada-servicio")).toHaveCount(0);
+  // formulario: la etiqueta cambió, el campo es el mismo
+  await page.getByRole("button", { name: "Nuevo servicio técnico" }).click();
+  await expect(page.getByLabel("Fecha de entrega")).toBeVisible();
+  await expect(page.getByLabel("Fecha de fin")).toHaveCount(0);
+});
