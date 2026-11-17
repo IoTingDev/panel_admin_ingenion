@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { Link } from "@tanstack/react-router";
 import {
@@ -43,6 +44,18 @@ import { fmtNum, fmtFechaHora, isoDia } from "@/lib/format";
 import { PageHeader, StatCard, DemoBadge, Panel } from "./common";
 import { API_MODE } from "@/lib/api";
 import { Loading } from "./data-tools";
+
+function Seccion({ titulo, children }: { titulo: string; children: ReactNode }) {
+  return (
+    <section className="mb-8" aria-label={titulo}>
+      <div className="mb-3 flex items-center gap-4">
+        <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-primary">{titulo}</h2>
+        <div className="h-px flex-1 bg-border" />
+      </div>
+      {children}
+    </section>
+  );
+}
 
 const ESTADO_COLOR: Record<string, string> = {
   en_desarrollo: "var(--muted-foreground)",
@@ -106,10 +119,8 @@ export function InicioView() {
   const vencidos = trabajos.filter(
     (t) => t.estado === "programado" && !!t.fechaProgramada && t.fechaProgramada.slice(0, 10) < hoy,
   );
-  const hace30 = isoDia(new Date(Date.now() - 30 * 864e5).toISOString());
-  const completados30 = trabajos.filter(
-    (t) => t.estado === "completado" && !!t.fechaFin && t.fechaFin.slice(0, 10) >= hace30,
-  );
+  // Total acumulado (ya no «30 días»): el título lo dice.
+  const completadosTotal = trabajos.filter((t) => t.estado === "completado");
   const recordarRespaldo = hayQueRecordarRespaldo();
   const suspendidos = clientes.filter((x) => x.estado === "suspendido");
   return (
@@ -145,70 +156,43 @@ export function InicioView() {
           </Link>
         </div>
       )}
-      <div className="mb-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label="Clientes activos"
-          value={clientes.filter((x) => x.estado === "activo").length}
-          icon={Building2}
-        />
-        <StatCard
-          label="Usuarios activos"
-          value={usuarios.filter((x) => x.estado === "activo").length}
-          icon={Users}
-          tone="info"
-        />
-        <StatCard
-          label="Proyectos en operación"
-          value={proyectos.filter((x) => x.estado === "activo").length}
-          icon={FolderKanban}
-          tone="success"
-        />
-        <StatCard
-          label="Proyectos pausados"
-          value={pausados.length}
-          icon={PauseCircle}
-          tone="warning"
-        />
-      </div>
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Referencias de inventario" value={items.length} icon={Boxes} />
-        <StatCard
-          label="Unidades en stock"
-          value={fmtNum([...stocks.values()].reduce((a, b) => a + b, 0))}
-          icon={Package}
-          tone="info"
-        />
-        <StatCard
-          label="Ítems por reponer"
-          value={bajos.length}
-          icon={AlertTriangle}
-          tone={bajos.length ? "destructive" : "success"}
-        />
-        <StatCard label="Movimientos (30 días)" value={recientes.length} icon={ArrowLeftRight} />
-      </div>
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Servicios en curso" value={enCurso.length} icon={Wrench} tone="warning" />
-        <StatCard
-          label="Programados esta semana"
-          value={programadosSemana.length}
-          icon={CalendarClock}
-          tone="info"
-        />
-        <StatCard
-          label="Servicios vencidos sin iniciar"
-          value={vencidos.length}
-          icon={AlertTriangle}
-          tone={vencidos.length ? "destructive" : "success"}
-        />
-        <StatCard
-          label="Completados (30 días)"
-          value={completados30.length}
-          icon={CheckCircle2}
-          tone="success"
-        />
-      </div>
-      <div className="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <div className="min-w-0 rounded-xl border bg-card p-5 shadow-soft">
+      <Seccion titulo="Clientes y usuarios">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <StatCard
+            label="Clientes activos"
+            value={clientes.filter((x) => x.estado === "activo").length}
+            icon={Building2}
+          />
+          <StatCard
+            label="Usuarios activos"
+            value={usuarios.filter((x) => x.estado === "activo").length}
+            icon={Users}
+            tone="info"
+          />
+        </div>
+      </Seccion>
+      <Seccion titulo="Proyectos I+D+I">
+        <div className="grid gap-4 sm:grid-cols-3">
+          <StatCard
+            label="Proyectos en operación"
+            value={proyectos.filter((x) => x.estado === "activo").length}
+            icon={FolderKanban}
+            tone="success"
+          />
+          <StatCard
+            label="Proyectos pausados"
+            value={pausados.length}
+            icon={PauseCircle}
+            tone="warning"
+          />
+          <StatCard
+            label="Proyectos finalizados"
+            value={proyectos.filter((x) => x.estado === "finalizado").length}
+            icon={CheckCircle2}
+            tone="info"
+          />
+        </div>
+        <div className="mt-4 min-w-0 rounded-xl border bg-card p-5 shadow-soft">
           <h3 className="mb-3 font-semibold">Proyectos por estado</h3>
           <div className="chart-wrap">
             <ResponsiveContainer>
@@ -242,7 +226,53 @@ export function InicioView() {
             ))}
           </div>
         </div>
-        <div className="min-w-0 rounded-xl border bg-card p-5 shadow-soft xl:col-span-2">
+      </Seccion>
+      <Seccion titulo="Servicios técnicos">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            label="Servicios en curso"
+            value={enCurso.length}
+            icon={Wrench}
+            tone="warning"
+          />
+          <StatCard
+            label="Programados esta semana"
+            value={programadosSemana.length}
+            icon={CalendarClock}
+            tone="info"
+          />
+          <StatCard
+            label="Servicios vencidos sin iniciar"
+            value={vencidos.length}
+            icon={AlertTriangle}
+            tone={vencidos.length ? "destructive" : "success"}
+          />
+          <StatCard
+            label="Completados (total)"
+            value={completadosTotal.length}
+            icon={CheckCircle2}
+            tone="success"
+          />
+        </div>
+      </Seccion>
+      <Seccion titulo="Inventario">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard label="Referencias de inventario" value={items.length} icon={Boxes} />
+          <StatCard
+            label="Unidades en stock"
+            value={fmtNum([...stocks.values()].reduce((a, b) => a + b, 0))}
+            icon={Package}
+            tone="info"
+          />
+          <StatCard
+            label="Ítems por reponer"
+            value={bajos.length}
+            icon={AlertTriangle}
+            tone={bajos.length ? "destructive" : "success"}
+          />
+          <StatCard label="Movimientos (30 días)" value={recientes.length} icon={ArrowLeftRight} />
+        </div>
+        <div className="mt-4 min-w-0 rounded-xl border bg-card p-5 shadow-soft">
           <h3 className="mb-3 font-semibold">Movimientos de inventario — últimos 30 días</h3>
           <div className="chart-wrap">
             <ResponsiveContainer>
@@ -284,7 +314,7 @@ export function InicioView() {
             </ResponsiveContainer>
           </div>
         </div>
-      </div>
+      </Seccion>
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <div className="min-w-0 rounded-xl border bg-card p-5 shadow-soft">
           <h3 className="mb-3 font-semibold">Clientes por sector</h3>

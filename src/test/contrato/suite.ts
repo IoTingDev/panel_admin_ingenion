@@ -352,6 +352,37 @@ export function ejecutarSuiteContrato(
         );
         await expect(api.configuracion.actualizarSectores(["cacao"])).rejects.toThrow(/sector/i);
       });
+
+      it("Parte C: «Agroindustrial» es opción de sector y «cacao», «café» y «mango» ya no", async () => {
+        const { sectores } = await api.configuracion.get();
+        expect(sectores).toContain("Agroindustrial");
+        for (const s of ["cacao", "café", "mango"]) expect(sectores).not.toContain(s);
+        const c = await api.clientes.create({
+          razonSocial: "Agro Prueba",
+          sector: "Agroindustrial",
+        });
+        expect(c.sector).toBe("Agroindustrial");
+        await expect(
+          api.clientes.create({ razonSocial: "Cacao", sector: "cacao" }),
+        ).rejects.toThrow(/sector/i);
+      });
+
+      it("Parte B: clientes.list trae serviciosCompletados y serviciosEnCurso solo del propio cliente", async () => {
+        const a = await api.clientes.create({ razonSocial: "Cliente A servicios", sector: "otro" });
+        const b = await api.clientes.create({ razonSocial: "Cliente B servicios", sector: "otro" });
+        const crear = (clienteId: string, estado: "completado" | "en_curso" | "programado") =>
+          api.trabajos.create({ clienteId, tipo: "cctv", titulo: `Servicio ${estado}`, estado });
+        await crear(a.id, "completado");
+        await crear(a.id, "completado");
+        await crear(a.id, "en_curso");
+        await crear(a.id, "programado");
+        await crear(b.id, "completado"); // de otro cliente: no cuenta para A
+        const lista = await api.clientes.list();
+        const la = lista.find((c) => c.id === a.id);
+        const lb = lista.find((c) => c.id === b.id);
+        expect([la?.serviciosCompletados, la?.serviciosEnCurso]).toEqual([2, 1]);
+        expect([lb?.serviciosCompletados, lb?.serviciosEnCurso]).toEqual([1, 0]);
+      });
     });
 
     describe("configuración y datos de demostración (contrato §5.7)", () => {

@@ -239,15 +239,15 @@ describe("cadena completa y carga desde localStorage", () => {
     expect([contar(v3, "componentes"), contar(v3, "herramientas"), contar(v3, "equipos")]).toEqual([
       106, 36, 8,
     ]);
-    expect(v3.version).toBe(3);
+    expect(v3.version).toBe(4); // la cadena termina en el esquema actual (v4)
   });
-  it("una base v2 guardada se migra al leer, se guarda como v3 y la v2 queda de respaldo", async () => {
+  it("una base v2 guardada se migra al leer, se guarda como v4 y la v2 queda de respaldo", async () => {
     window.localStorage.setItem("ioting.mock.db.v2", JSON.stringify(comoV2(buildSeed())));
     const items = await mockApi.inventario.listItems();
     expect(items).toHaveLength(150);
     expect(items.filter((i) => i.grupo === "componentes")).toHaveLength(106);
-    const v3 = JSON.parse(window.localStorage.getItem("ioting.mock.db.v3") ?? "null");
-    expect(v3?.version).toBe(3);
+    const v3 = JSON.parse(window.localStorage.getItem("ioting.mock.db.v4") ?? "null");
+    expect(v3?.version).toBe(4);
     expect(JSON.parse(window.localStorage.getItem("ioting.mock.db.v2")!).version).toBe(2); // intacta
   });
   it("si existen la v1 y la v2, se migra la v2 (la más reciente), no la v1", async () => {
@@ -285,9 +285,9 @@ describe("cadena completa y carga desde localStorage", () => {
     expect(items.some((i) => (i.grupo as string) === "seguridad")).toBe(false);
     expect(items.filter((i) => i.grupo === "componentes")).toHaveLength(106);
   });
-  it("el respaldo que exporta el panel v3 trae versión 3", async () => {
+  it("el respaldo que exporta el panel v4 trae versión 4", async () => {
     resetMockDb();
-    expect((await mockApi.respaldo.exportar()).version).toBe(3);
+    expect((await mockApi.respaldo.exportar()).version).toBe(4);
   });
 });
 

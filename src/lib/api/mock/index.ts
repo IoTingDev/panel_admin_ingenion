@@ -172,7 +172,20 @@ export const mockApi: Api = {
   clientes: {
     async list() {
       await delay();
-      return clone(db().clientes);
+      const d = db();
+      // Derivados de lectura (nunca se persisten): una sola pasada sobre los servicios, sin consulta por cliente.
+      const porCliente = new Map<string, { completados: number; enCurso: number }>();
+      for (const t of d.trabajos) {
+        const n = porCliente.get(t.clienteId) ?? { completados: 0, enCurso: 0 };
+        if (t.estado === "completado") n.completados++;
+        else if (t.estado === "en_curso") n.enCurso++;
+        porCliente.set(t.clienteId, n);
+      }
+      return clone(d.clientes).map((c) => ({
+        ...c,
+        serviciosCompletados: porCliente.get(c.id)?.completados ?? 0,
+        serviciosEnCurso: porCliente.get(c.id)?.enCurso ?? 0,
+      }));
     },
     async get(id) {
       await delay();
@@ -181,8 +194,13 @@ export const mockApi: Api = {
     async create(data) {
       await delay();
       exigirSector(data.sector);
+      const {
+        serviciosCompletados: _sc,
+        serviciosEnCurso: _se,
+        ...propios
+      } = data as typeof data & { serviciosCompletados?: number; serviciosEnCurso?: number };
       const c = {
-        ...data,
+        ...propios,
         id: uid(),
         estado: "activo" as const,
         creadoEn: new Date().toISOString(),
@@ -204,7 +222,9 @@ export const mockApi: Api = {
         "Cliente no encontrado",
       );
       if (data.sector !== undefined && data.sector !== c.sector) exigirSector(data.sector);
-      Object.assign(c, data);
+      // Los derivados de lectura no se escriben nunca.
+      const { serviciosCompletados: _sc, serviciosEnCurso: _se, ...propios } = data;
+      Object.assign(c, propios);
       audit({
         accion: "cliente.editar",
         entidad: "cliente",

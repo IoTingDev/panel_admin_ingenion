@@ -116,19 +116,21 @@ Convenciones: `id` es un UUID v4 generado por el servidor; fechas con hora en IS
 
 ### 2.2 Cliente
 
-| Campo                                                 | Tipo                               | Oblig. | Notas                                            |
-| ----------------------------------------------------- | ---------------------------------- | ------ | ------------------------------------------------ |
-| `id`                                                  | string                             | sí     |                                                  |
-| `razonSocial`                                         | string                             | sí     | mínimo 3 caracteres (validación del formulario). |
-| `nit`                                                 | string                             | opc.   |                                                  |
-| `sector`                                              | string                             | sí     | **Debe estar en `Configuracion.sectores`.**      |
-| `tipoCliente`                                         | `persona` \| `empresa`             | opc.   |                                                  |
-| `direccion`, `ciudad`                                 | string                             | opc.   |                                                  |
-| `contactoNombre`, `contactoEmail`, `contactoTelefono` | string                             | opc.   | Correo con formato válido.                       |
-| `estado`                                              | `activo` \| `suspendido` \| `baja` | sí     |                                                  |
-| `creadoEn`                                            | ISO                                | sí     |                                                  |
-| `notas`                                               | string                             | opc.   |                                                  |
-| `esDemo`                                              | boolean                            | opc.   | Marca de dato de demostración (§5.7).            |
+| Campo                                                 | Tipo                               | Oblig.   | Notas                                                                                                                                                                 |
+| ----------------------------------------------------- | ---------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                                                  | string                             | sí       |                                                                                                                                                                       |
+| `razonSocial`                                         | string                             | sí       | mínimo 3 caracteres (validación del formulario).                                                                                                                      |
+| `nit`                                                 | string                             | opc.     |                                                                                                                                                                       |
+| `sector`                                              | string                             | sí       | **Debe estar en `Configuracion.sectores`.**                                                                                                                           |
+| `tipoCliente`                                         | `persona` \| `empresa`             | opc.     |                                                                                                                                                                       |
+| `direccion`, `ciudad`                                 | string                             | opc.     |                                                                                                                                                                       |
+| `contactoNombre`, `contactoEmail`, `contactoTelefono` | string                             | opc.     | Correo con formato válido.                                                                                                                                            |
+| `estado`                                              | `activo` \| `suspendido` \| `baja` | sí       |                                                                                                                                                                       |
+| `creadoEn`                                            | ISO                                | sí       |                                                                                                                                                                       |
+| `notas`                                               | string                             | opc.     |                                                                                                                                                                       |
+| `esDemo`                                              | boolean                            | opc.     | Marca de dato de demostración (§5.7).                                                                                                                                 |
+| `serviciosCompletados`                                | number                             | derivado | **Solo lectura**, v4 (aditivo). Lo calcula `clientes.list` (nunca se persiste ni se acepta en `create`/`update`): servicios técnicos `completado` del propio cliente. |
+| `serviciosEnCurso`                                    | number                             | derivado | **Solo lectura**, v4 (aditivo): servicios del propio cliente en estado `en_curso`.                                                                                    |
 
 ### 2.3 UsuarioCliente (usuarios del portal del cliente)
 
@@ -214,8 +216,9 @@ cambios de modelo** en la v2: solo se amplía la cascada (§5.4).
 - `inventario.depreciacion.aniosPorGrupo`: `Record<grupo, number | null>` (null = no se deprecia).
   Por defecto: componentes `null`, herramientas 5, equipos 5. (Tres claves: `seguridad` ya no existe.)
 - `inventario.depreciacion.residualPct`: 0..100 (por defecto 10).
-- `sectores`: `string[]` (por defecto: cacao, café, mango, residencial, comercial, industrial,
-  institucional, otro).
+- `sectores`: `string[]` (por defecto, desde el panel v4: Agroindustrial, residencial, comercial,
+  industrial, institucional, otro). Antes de la v4 incluía cacao, café y mango; esos registros pasaron a
+  «Agroindustrial» (§10).
 
 ### 2.9 Auditoria
 
@@ -521,8 +524,8 @@ Esta sección **propone** el encaje; lo marcado como pendiente está en §1.
 
 ## 10. Migración de datos guardados (modo mock)
 
-La base se guarda en `localStorage` como `ioting.mock.db.v3`. Las migraciones están
-**encadenadas** (v1 → v2 → v3) y cada base anterior **queda intacta como respaldo**; si existen
+La base se guarda en `localStorage` como `ioting.mock.db.v4`. Las migraciones están
+**encadenadas** (v1 → v2 → v3 → v4) y cada base anterior **queda intacta como respaldo**; si existen
 varias, se migra la más reciente.
 
 - **v1 → v2:** al leer una base v1 se migra (los SKU **no cambian**): grupo explícito y
@@ -538,7 +541,12 @@ varias, se migra la más reciente.
   `sistema.migracion`. Resultado con la semilla: **componentes 106, herramientas 36, equipos 8 = 150
   referencias, 401 unidades** (CAB-002 a CAB-007 pasan a componentes, categoría «Cableado y
   conectividad»). Idempotente.
-- **Respaldo JSON:** la versión del formato pasa a **3**. Un respaldo de la v1 o la v2 se acepta y se
+- **v3 → v4 (panel v4):** los clientes con sector `cacao`, `café` o `mango` pasan a `Agroindustrial` y la
+  lista de sectores se actualiza (se quitan los tres y se añade «Agroindustrial»). **No se borra ni se
+  recorta nada**: el valor anterior de cada cliente queda en la auditoría (una entrada por cliente), la
+  lista anterior en la entrada `configuracion.sectores` y se añade `sistema.migracion`. Idempotente.
+  Inversa: la auditoría guarda cada valor anterior; la base v3 original queda intacta en `ioting.mock.db.v3`.
+- **Respaldo JSON:** la versión del formato pasa a **4**. Un respaldo de la v1, v2 o v3 se acepta y se
   migra al importarlo.
 - **Plantilla CSV de valores:** `grupo_propuesto` solo admite los tres grupos. Un CSV antiguo con
   `seguridad` se acepta, se toma como `componentes` y la vista previa lo **avisa** (no es un error).

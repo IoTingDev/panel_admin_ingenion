@@ -25,6 +25,10 @@ export interface Cliente {
   notas?: string | undefined;
   /** Dato de demostración: lo elimina «Limpiar datos de demostración». */
   esDemo?: boolean | undefined;
+  /** Derivado, solo lectura (lo calcula `clientes.list`; nunca se persiste): servicios completados del cliente. */
+  serviciosCompletados?: number | undefined;
+  /** Derivado, solo lectura: servicios del cliente en estado «en curso». */
+  serviciosEnCurso?: number | undefined;
 }
 
 export interface UsuarioCliente {

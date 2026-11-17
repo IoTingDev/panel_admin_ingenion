@@ -5,12 +5,16 @@ import {
   RECLASIFICACION_V1,
   type GrupoV2,
 } from "@/lib/config-inventario";
-import { SECTORES_DEFECTO } from "@/lib/dominio";
+import { SECTOR_AGROINDUSTRIAL, SECTORES_DEFECTO, SECTORES_RETIRADOS } from "@/lib/dominio";
 import { inicializarSecuencias, prefijoDeSku } from "@/lib/inventario";
 import { ACTOR, type MockDb } from "./seed";
 
-/** Versión del esquema guardado. v1 → v2 (grupos explícitos), v2 → v3 (tres grupos). */
-export const VERSION_DB = 3;
+/**
+ * Versión del esquema guardado. v1 → v2 (grupos explícitos), v2 → v3 (tres grupos), v3 → v4 (sectores:
+ * «cacao», «café» y «mango» pasan a «Agroindustrial»).
+ */
+export const VERSION_DB = 4;
+const VERSION_V3 = 3;
 
 type Laxo = Record<string, unknown>;
 
@@ -154,7 +158,7 @@ export function migrarV1aV2(raw: Laxo): Laxo {
  * usuario haya añadido) se funden en las de Componentes. Es idempotente.
  */
 export function migrarV2aV3(raw: Laxo): MockDb {
-  if (Number(raw["version"] ?? 1) >= VERSION_DB)
+  if (Number(raw["version"] ?? 1) >= VERSION_V3)
     return completarDb(structuredClone(raw)) as unknown as MockDb;
   const db = completarDb(structuredClone(raw)) as RegDb;
   let movidos = 0;
@@ -187,14 +191,88 @@ export function migrarV2aV3(raw: Laxo): MockDb {
     },
     ...(db.auditoria ?? []),
   ];
-  return { ...db, items, config: cfg, auditoria, version: VERSION_DB } as unknown as MockDb;
+  return { ...db, items, config: cfg, auditoria, version: VERSION_V3 } as unknown as MockDb;
 }
 
-/** Lleva cualquier base guardada (v1, v2 o v3) al esquema actual, encadenando las migraciones. */
+/**
+ * Sube una base v3 a la v4: los clientes con sector «cacao», «café» o «mango» pasan a «Agroindustrial» y la
+ * lista de sectores se actualiza. **No borra ni recorta nada**: el valor anterior de cada cliente queda en la
+ * auditoría (una entrada por cliente) y la lista anterior, en la entrada de configuración. Idempotente: una
+ * base v4 se devuelve igual.
+ */
+export function migrarV3aV4(raw: Laxo): MockDb {
+  if (Number(raw["version"] ?? 1) >= VERSION_DB)
+    return completarDb(structuredClone(raw)) as unknown as MockDb;
+  const db = completarDb(structuredClone(raw)) as RegDb;
+  const nuevas: {
+    id: string;
+    fecha: string;
+    actor: string;
+    accion: string;
+    entidad: string;
+    entidadId: string;
+    detalle: string;
+  }[] = [];
+  const entrada = (accion: string, entidad: string, entidadId: string, detalle: string) =>
+    nuevas.push({
+      id: uid(),
+      fecha: new Date().toISOString(),
+      actor: ACTOR,
+      accion,
+      entidad,
+      entidadId,
+      detalle,
+    });
+
+  let convertidos = 0;
+  const clientes = (db.clientes ?? []).map((c) => {
+    if (!c.sector || !SECTORES_RETIRADOS.includes(c.sector)) return c;
+    convertidos++;
+    entrada(
+      "cliente.editar",
+      "cliente",
+      String((c as unknown as { id: string }).id),
+      `Sector «${c.sector}» → «${SECTOR_AGROINDUSTRIAL}» (migración v3 → v4; valor anterior conservado aquí)`,
+    );
+    return { ...c, sector: SECTOR_AGROINDUSTRIAL };
+  });
+
+  const cfg: RegConfig = db.config ?? { inventario: configInventarioV2(), sectores: [] };
+  const antes = [...(cfg.sectores ?? [])];
+  const lista = [
+    ...new Set(antes.map((s) => (SECTORES_RETIRADOS.includes(s) ? SECTOR_AGROINDUSTRIAL : s))),
+  ];
+  if (!lista.includes(SECTOR_AGROINDUSTRIAL)) lista.unshift(SECTOR_AGROINDUSTRIAL);
+  cfg.sectores = lista;
+  if (antes.join("|") !== lista.join("|"))
+    entrada(
+      "configuracion.sectores",
+      "configuracion",
+      "sectores",
+      `${lista.join(", ")} (antes: ${antes.join(", ")}; migración v3 → v4)`,
+    );
+  entrada(
+    "sistema.migracion",
+    "sistema",
+    "db",
+    `Base v3 → v4: ${convertidos} clientes pasan a «${SECTOR_AGROINDUSTRIAL}»; el resto de los datos queda intacto y los valores anteriores constan en la auditoría.`,
+  );
+
+  return {
+    ...db,
+    clientes,
+    config: cfg,
+    auditoria: [...nuevas.reverse(), ...(db.auditoria ?? [])],
+    version: VERSION_DB,
+  } as unknown as MockDb;
+}
+
+/** Lleva cualquier base guardada (v1, v2, v3 o v4) al esquema actual, encadenando las migraciones. */
 export function migrarADbActual(raw: Laxo): MockDb {
   const v = Number(raw["version"] ?? 1);
   if (v >= VERSION_DB) return completarDb(structuredClone(raw)) as unknown as MockDb;
-  return migrarV2aV3(v >= 2 ? raw : migrarV1aV2(raw));
+  const v3 = v >= VERSION_V3 ? raw : migrarV2aV3(v >= 2 ? raw : migrarV1aV2(raw));
+  return migrarV3aV4(v3 as unknown as Laxo);
 }
 
 /**

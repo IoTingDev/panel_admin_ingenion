@@ -116,6 +116,7 @@ export function ClientesView({ nuevo = false }: { nuevo?: boolean }) {
               <th>Ciudad</th>
               <th>Usuarios</th>
               <th>Proyectos</th>
+              <th>Servicios</th>
               <th>Estado</th>
               <th>Creado</th>
               <th />
@@ -146,6 +147,12 @@ export function ClientesView({ nuevo = false }: { nuevo?: boolean }) {
                 </td>
                 <td>
                   {proyectos.filter((p) => p.clienteId === c.id && p.estado !== "baja").length}
+                </td>
+                <td data-testid="servicios-cliente">
+                  {c.serviciosCompletados ?? 0}
+                  {!!c.serviciosEnCurso && (
+                    <p className="text-xs text-muted-foreground">{c.serviciosEnCurso} en curso</p>
+                  )}
                 </td>
                 <td>
                   <StatusBadge estado={c.estado} />

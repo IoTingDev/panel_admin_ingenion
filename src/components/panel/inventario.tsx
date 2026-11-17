@@ -3,7 +3,6 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Boxes,
   Package,
-  AlertTriangle,
   ArrowLeftRight,
   Plus,
   FileSpreadsheet,
@@ -25,6 +24,7 @@ import {
 import { stockMap, esStockBajo, siguienteSku } from "@/lib/inventario";
 import { GRUPOS as ORDEN_GRUPOS, ROTULO_GRUPO } from "@/lib/config-inventario";
 import { fmtCop } from "@/lib/format";
+import { ValorInventarioPorTipo } from "./inventario-valor-tipo";
 import { exportInventory, download } from "@/lib/export";
 import { validateCsv, type ImportRow } from "@/lib/import-movements";
 import { fmtFechaHora, fmtNum } from "@/lib/format";
@@ -144,7 +144,6 @@ export function InventarioView() {
       (a, b) => ((stocks.get(a.sku) ?? 0) - (stocks.get(b.sku) ?? 0)) * sortStock,
     );
   const pg = usePagination(rows, 12);
-  const bajos = delGrupo.filter((i) => esStockBajo(stocks.get(i.sku) ?? 0, i.stock_minimo)).length;
   if (isLoading) return <Loading />;
   return (
     <>
@@ -212,7 +211,7 @@ export function InventarioView() {
           ))}
         </TabsList>
       </Tabs>
-      <div className="mb-5 grid gap-4 sm:grid-cols-3">
+      <div className="mb-5 grid gap-4 sm:grid-cols-2">
         <StatCard label="Referencias" value={delGrupo.length} icon={Boxes} />
         <StatCard
           label="Unidades en stock"
@@ -220,13 +219,8 @@ export function InventarioView() {
           icon={Package}
           tone="info"
         />
-        <StatCard
-          label="Ítems por reponer"
-          value={bajos}
-          icon={AlertTriangle}
-          tone={bajos ? "destructive" : "success"}
-        />
       </div>
+      <ValorInventarioPorTipo items={items} movs={movs} />
       <div className="mb-5 flex flex-wrap gap-3">
         <SearchInput value={q} onChange={setQ} placeholder="Buscar SKU, descripción o marca…" />
         <FilterSelect

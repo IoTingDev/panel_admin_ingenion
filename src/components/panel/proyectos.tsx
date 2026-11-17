@@ -11,6 +11,7 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import { api, type Proyecto, type EstadoProyecto } from "@/lib/api";
+import { hoyBogota } from "@/lib/inventario";
 import {
   useProyectos,
   useClientes,
@@ -29,6 +30,33 @@ import { ProyectoSheet } from "./proyecto-sheet";
 import { ConfirmDialog, type ConfirmState } from "./confirm-dialog";
 import { useUi } from "./ui-context";
 
+/**
+ * Cambia el estado de un proyecto. Al pasar a «Finalizado» un proyecto sin fecha de fin, propone hoy (la
+ * fecha se puede corregir después en el formulario): así no nacen proyectos finalizados «sin fecha».
+ */
+function cambiarEstadoProyecto(
+  p: Proyecto | undefined,
+  id: string,
+  estado: EstadoProyecto,
+  motivo?: string,
+) {
+  if (estado === "finalizado" && p && !p.fechaFin)
+    return api.proyectos.update(id, { estado, fechaFin: `${hoyBogota()}T12:00:00-05:00` });
+  return api.proyectos.cambiarEstado(id, estado, motivo);
+}
+
+/** Columna «Fin»: la fecha real, «Vigente» o «Sin fecha» (datos anteriores); nunca una fecha inventada. */
+export function FinProyecto({ p }: { p: Pick<Proyecto, "estado" | "fechaFin"> }) {
+  if (p.estado === "finalizado")
+    return p.fechaFin ? (
+      <>{fmtFecha(p.fechaFin)}</>
+    ) : (
+      <span className="text-muted-foreground">Sin fecha</span>
+    );
+  if (p.estado === "baja") return <>—</>;
+  return <span className="text-muted-foreground">Vigente</span>;
+}
+
 export function ProyectosView({ clienteId = "" }: { clienteId?: string }) {
   const { data: proyectos = [], isLoading } = useProyectos();
   const { data: clientes = [] } = useClientes();
@@ -42,7 +70,11 @@ export function ProyectosView({ clienteId = "" }: { clienteId?: string }) {
   const [drag, setDrag] = useState("");
   const change = useApiMutation(
     ({ id, estado }: { id: string; estado: EstadoProyecto }) =>
-      api.proyectos.cambiarEstado(id, estado),
+      cambiarEstadoProyecto(
+        proyectos.find((x) => x.id === id),
+        id,
+        estado,
+      ),
     "Estado actualizado",
   );
   const rows = proyectos.filter(
@@ -192,6 +224,7 @@ export function ProyectosView({ clienteId = "" }: { clienteId?: string }) {
                 <th>Responsable</th>
                 <th>Estado</th>
                 <th>Inicio</th>
+                <th>Fin</th>
               </tr>
             </thead>
             <tbody>
@@ -220,6 +253,9 @@ export function ProyectosView({ clienteId = "" }: { clienteId?: string }) {
                     <StatusBadge estado={p.estado} label={ROTULO_ESTADO_PROYECTO[p.estado]} />
                   </td>
                   <td className="whitespace-nowrap">{fmtFecha(p.fechaInicio)}</td>
+                  <td className="whitespace-nowrap" data-testid="fin-proyecto">
+                    <FinProyecto p={p} />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -247,7 +283,7 @@ export function ProyectoDetail({ id }: { id: string }) {
   );
   const change = useApiMutation(
     ({ estado, motivo }: { estado: EstadoProyecto; motivo?: string }) =>
-      api.proyectos.cambiarEstado(id, estado, motivo),
+      cambiarEstadoProyecto(p, id, estado, motivo),
     "Estado actualizado",
   );
   if (isLoading) return <Loading />;

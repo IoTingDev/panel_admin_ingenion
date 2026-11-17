@@ -291,3 +291,37 @@ export function detalleValor(a: {
     };
   });
 }
+
+export interface ValorPorTipo {
+  /** Existencia a costo total (suma de los tres tipos). */
+  total: number;
+  /** Ítems (sin los dados de baja) que tienen valor cargado. */
+  conValor: number;
+  /** Ítems (sin los dados de baja), con o sin valor cargado. */
+  totalItems: number;
+  filas: { grupo: GrupoInventario; valor: number; pct: number }[];
+}
+
+/**
+ * «Valor del inventario por tipo»: existencia a costo (stock × valor unitario) por Componentes, Herramientas y
+ * Equipos, con su porcentaje del total. Reutiliza `resumenValor` (la misma base que la pantalla «Valor del
+ * inventario»); los ítems sin valor no suman y se cuentan aparte. Calculado, nunca guardado.
+ */
+export function valorPorTipo(a: {
+  items: ItemInventario[];
+  movs: MovimientoInventario[];
+  params: ParametrosDepreciacion;
+  anioActual: number;
+}): ValorPorTipo {
+  const r = resumenValor(a);
+  return {
+    total: r.existencia,
+    conValor: r.conValor,
+    totalItems: r.conValor + r.sinValor,
+    filas: GRUPOS.map((g) => ({
+      grupo: g,
+      valor: r.porGrupo[g].existencia,
+      pct: r.existencia > 0 ? (r.porGrupo[g].existencia / r.existencia) * 100 : 0,
+    })),
+  };
+}
