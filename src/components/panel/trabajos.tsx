@@ -227,7 +227,6 @@ export function TrabajosView({ clienteId = "" }: { clienteId?: string }) {
                 <th>Cliente</th>
                 <th>Responsable</th>
                 <th>Estado</th>
-                <th>Programado</th>
                 <th>Fecha de entrega</th>
               </tr>
             </thead>
@@ -258,7 +257,6 @@ export function TrabajosView({ clienteId = "" }: { clienteId?: string }) {
                   <td>
                     <Estado t={t} />
                   </td>
-                  <td className="whitespace-nowrap">{fmtFecha(t.fechaProgramada)}</td>
                   <td className="whitespace-nowrap" data-testid="entrega-servicio">
                     {diaEntrega(t) ? fmtFecha(t.fechaFin) : "—"}
                   </td>
