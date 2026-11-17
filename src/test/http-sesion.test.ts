@@ -209,6 +209,17 @@ describe("AuthApi de sesión real", () => {
     void a.login("x", "y");
     expect(irA).toHaveBeenCalledWith("https://portal.test/start");
   });
+  it("sin URL configurada, login lleva al enlace directo de la aplicación SAML del panel (no a la lista del portal)", async () => {
+    const irA = vi.fn();
+    const a = crearAuthSesion(transporte([json(200, {})]).t, { irA });
+    void a.login("x", "y");
+    const destino = new URL(irA.mock.calls[0]?.[0] as string);
+    expect(destino.origin).toBe("https://iotingdev.awsapps.com");
+    // El fragmento decodificado debe nombrar la aplicación; la lista del portal es solo «/start».
+    expect(decodeURIComponent(destino.hash)).toMatch(
+      /^#\/saml\/default\/Panel de administración IoTing Dev\/ins-[0-9a-f]+$/,
+    );
+  });
   it("logout pide al backend cerrar la sesión y no falla si el backend no responde", async () => {
     const { t, llamadas } = transporte([json(200, {})]);
     await crearAuthSesion(t).logout();
