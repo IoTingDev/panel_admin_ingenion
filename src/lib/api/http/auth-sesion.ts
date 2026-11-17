@@ -2,8 +2,15 @@ import type { AuthApi, Operador } from "../types";
 import { ErrorApi } from "./errores";
 import type { Transporte } from "./transporte";
 
-/** Portal de acceso de IAM Identity Center: desde allí se inicia el flujo SAML (ADR-0046). */
-export const URL_PORTAL_ACCESO_DEFECTO = "https://iotingdev.awsapps.com/start";
+/**
+ * Enlace directo a la aplicación SAML del panel en el portal de acceso de IAM Identity Center
+ * (ADR-0046). Con sesión del portal vigente entra al panel sin elegir la aplicación; sin ella, el
+ * portal pide el inicio de sesión (con MFA) y continúa hacia la aplicación. Es la dirección que
+ * enlaza el icono del portal. El identificador `ins-…` es de la aplicación, no un secreto; si la
+ * aplicación se recrea, cambia (ver `docs/operacion/panel-saml-identity-center.md` del monorepo).
+ */
+export const URL_PORTAL_ACCESO_DEFECTO =
+  "https://iotingdev.awsapps.com/start/#/saml/default/Panel%20de%20administraci%C3%B3n%20IoTing%20Dev/ins-722365902024ff67";
 
 /**
  * `AuthApi` sobre la sesión real del operador. No hay usuario y contraseña propios: el ingreso es
