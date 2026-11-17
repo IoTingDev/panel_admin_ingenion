@@ -28,7 +28,7 @@ type Db = {
   movimientos: { sku: string; tipo: string; cantidad: number }[];
 };
 const leerDb = (page: Page) =>
-  page.evaluate(() => JSON.parse(localStorage.getItem("ioting.mock.db.v3") ?? "null") as Db);
+  page.evaluate(() => JSON.parse(localStorage.getItem("ioting.mock.db.v4") ?? "null") as Db);
 const stockDeDb = (db: Db, sku: string) =>
   db.movimientos.reduce(
     (a, m) => (m.sku !== sku ? a : m.tipo === "Entrada" ? a + m.cantidad : a - m.cantidad),
@@ -129,7 +129,7 @@ test("sin valores, el aviso cuenta exactamente los ítems sin valor (y la cifra 
 test("«descontar lo usado» en 2 clics desde la fila del ítem", async ({ page }) => {
   await entrar(page);
   await page.goto("/inventario");
-  await page.waitForFunction(() => !!localStorage.getItem("ioting.mock.db.v3"));
+  await page.waitForFunction(() => !!localStorage.getItem("ioting.mock.db.v4"));
   const antes = stockDeDb((await leerDb(page))!, "SEN-002");
   expect(antes).toBeGreaterThan(1);
   await page.getByPlaceholder("Buscar SKU, descripción o marca…").fill("SEN-002");
@@ -161,7 +161,7 @@ test("salida con fecha pasada y destino a un proyecto; la fecha futura no se dej
   await dlg.getByRole("button", { name: "Confirmar movimiento" }).click();
   await expect(dlg).toBeHidden();
   const db = (await page.evaluate(() =>
-    JSON.parse(localStorage.getItem("ioting.mock.db.v3")!),
+    JSON.parse(localStorage.getItem("ioting.mock.db.v4")!),
   )) as {
     movimientos: {
       sku: string;
@@ -236,9 +236,9 @@ test("configuración: una categoría nueva de Componentes se numera con su prefi
 test("una base v1 guardada en el navegador se migra a v2 sin perder datos", async ({ page }) => {
   await entrar(page);
   await page.goto("/inventario");
-  await page.waitForFunction(() => !!localStorage.getItem("ioting.mock.db.v3"));
+  await page.waitForFunction(() => !!localStorage.getItem("ioting.mock.db.v4"));
   const resultado = await page.evaluate(() => {
-    const db = JSON.parse(localStorage.getItem("ioting.mock.db.v3")!);
+    const db = JSON.parse(localStorage.getItem("ioting.mock.db.v4")!);
     // Se vuelve a dejar como la guardaba la v1: sin grupo, valoración, config ni contador.
     for (const i of db.items) {
       delete i.grupo;
@@ -272,14 +272,14 @@ test("una base v1 guardada en el navegador se migra a v2 sin perder datos", asyn
       stock_minimo: null,
       notas: "",
     });
-    localStorage.removeItem("ioting.mock.db.v3");
+    localStorage.removeItem("ioting.mock.db.v4");
     localStorage.setItem("ioting.mock.db.v1", JSON.stringify(db));
     return { movs: db.movimientos.length, aud: db.auditoria.length };
   });
   await page.reload();
-  await page.waitForFunction(() => !!localStorage.getItem("ioting.mock.db.v3"));
+  await page.waitForFunction(() => !!localStorage.getItem("ioting.mock.db.v4"));
   const v2 = (await page.evaluate(() =>
-    JSON.parse(localStorage.getItem("ioting.mock.db.v3")!),
+    JSON.parse(localStorage.getItem("ioting.mock.db.v4")!),
   )) as Db & {
     auditoria: unknown[];
   };
@@ -290,8 +290,8 @@ test("una base v1 guardada en el navegador se migra a v2 sin perder datos", asyn
     106, 37, 8,
   ]);
   expect(v2.movimientos).toHaveLength(resultado.movs);
-  // La cadena v1 → v2 → v3 deja dos eventos de migración, y no se pierde ninguno anterior.
-  expect(v2.auditoria.length).toBe(resultado.aud + 2);
+  // La cadena v1 → v2 → v3 → v4 deja tres eventos de migración, y no se pierde ninguno anterior.
+  expect(v2.auditoria.length).toBe(resultado.aud + 3);
   // Y la interfaz lo muestra: CAB-003 está en Componentes.
   await page.getByPlaceholder("Buscar SKU, descripción o marca…").fill("CAB-003");
   await expect(page.getByRole("row", { name: /CAB-003/ })).toBeVisible();

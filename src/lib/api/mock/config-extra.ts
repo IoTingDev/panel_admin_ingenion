@@ -15,12 +15,13 @@ export const configuracionExtra: Pick<ConfiguracionApi, "actualizarSectores" | "
       throw new Error(
         `No se puede quitar el sector «${enUso.sector}»: lo usa el cliente ${enUso.razonSocial}.`,
       );
+    const antes = [...d.config.sectores];
     d.config.sectores = limpios;
     audit({
       accion: "configuracion.sectores",
       entidad: "configuracion",
       entidadId: "sectores",
-      detalle: limpios.join(", "),
+      detalle: `${limpios.join(", ")} (antes: ${antes.join(", ")})`,
     });
     persist();
     return clone(d.config);

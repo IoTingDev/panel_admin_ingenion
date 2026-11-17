@@ -4,7 +4,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { api, type Cliente } from "@/lib/api";
 import { useApiMutation, useConfiguracion } from "@/hooks/use-api";
-import { TIPOS_CLIENTE } from "@/lib/dominio";
+import { SECTOR_AGROINDUSTRIAL, TIPOS_CLIENTE } from "@/lib/dominio";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -45,7 +45,7 @@ export function ClienteSheet({
     defaultValues: {
       razonSocial: "",
       nit: "",
-      sector: "cacao",
+      sector: SECTOR_AGROINDUSTRIAL,
       tipoCliente: "empresa",
       direccion: "",
       ciudad: "",
@@ -59,7 +59,7 @@ export function ClienteSheet({
     form.reset({
       razonSocial: cliente?.razonSocial ?? "",
       nit: cliente?.nit ?? "",
-      sector: cliente?.sector ?? "cacao",
+      sector: cliente?.sector ?? SECTOR_AGROINDUSTRIAL,
       tipoCliente: cliente?.tipoCliente ?? "empresa",
       direccion: cliente?.direccion ?? "",
       ciudad: cliente?.ciudad ?? "",
@@ -119,7 +119,7 @@ export function ClienteSheet({
           <div className="space-y-2">
             <Label htmlFor="sector">Sector</Label>
             <select id="sector" className="app-select w-full" {...form.register("sector")}>
-              {(config?.sectores ?? ["cacao"]).map((s) => (
+              {(config?.sectores ?? [SECTOR_AGROINDUSTRIAL]).map((s) => (
                 <option key={s}>{s}</option>
               ))}
             </select>

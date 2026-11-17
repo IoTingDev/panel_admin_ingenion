@@ -27,7 +27,7 @@ export interface MockDb {
   config: Configuracion;
   trabajos: TrabajoTecnico[];
   /** Versión del esquema guardado (ver migracion.ts). */
-  version: 3;
+  version: number;
 }
 
 const id = (p: string, n: number) => `${p}-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -52,7 +52,7 @@ export function buildSeed(): MockDb {
       id: c(1),
       razonSocial: "Cacaotera del Magdalena S.A.S.",
       nit: "901.234.567-1",
-      sector: "cacao",
+      sector: "Agroindustrial",
       ciudad: "Santa Marta",
       contactoNombre: "Laura Restrepo",
       contactoEmail: "laura.restrepo@cacaomagdalena.co",
@@ -64,7 +64,7 @@ export function buildSeed(): MockDb {
       id: c(2),
       razonSocial: "Café Alto de los Andes S.A.S.",
       nit: "900.876.543-2",
-      sector: "café",
+      sector: "Agroindustrial",
       ciudad: "Manizales",
       contactoNombre: "Andrés Giraldo",
       contactoEmail: "agiraldo@cafealtoandes.co",
@@ -76,7 +76,7 @@ export function buildSeed(): MockDb {
       id: c(3),
       razonSocial: "Mangos Tolima Export S.A.S.",
       nit: "901.555.210-3",
-      sector: "mango",
+      sector: "Agroindustrial",
       ciudad: "Espinal",
       contactoNombre: "Diana Murillo",
       contactoEmail: "dmurillo@mangostolima.co",
@@ -88,7 +88,7 @@ export function buildSeed(): MockDb {
       id: c(4),
       razonSocial: "Cooperativa Cafetera Sierra Verde",
       nit: "890.112.334-4",
-      sector: "café",
+      sector: "Agroindustrial",
       ciudad: "Pitalito",
       contactoNombre: "Hernán Bustos",
       contactoEmail: "hbustos@sierraverde.coop",
@@ -113,7 +113,7 @@ export function buildSeed(): MockDb {
       id: c(6),
       razonSocial: "Chocolates Finos de Urabá S.A.S.",
       nit: "901.443.221-6",
-      sector: "cacao",
+      sector: "Agroindustrial",
       ciudad: "Apartadó",
       contactoNombre: "Felipe Arango",
       contactoEmail: "farango@chocouraba.co",

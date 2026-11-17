@@ -197,12 +197,12 @@ describe("carga desde localStorage", () => {
     window.localStorage.clear();
     resetMemoria();
   });
-  it("una base v1 guardada se migra al leer (v1 → v2 → v3), se guarda como v3 y la v1 queda de respaldo", async () => {
+  it("una base v1 guardada se migra al leer (v1 → v2 → v3 → v4), se guarda como v4 y la v1 queda de respaldo", async () => {
     window.localStorage.setItem("ioting.mock.db.v1", JSON.stringify(comoV1(buildSeed())));
     const items = await mockApi.inventario.listItems();
     expect(items).toHaveLength(150);
     expect(items.filter((i) => i["grupo"] === "componentes")).toHaveLength(106);
-    const v2 = JSON.parse(window.localStorage.getItem("ioting.mock.db.v3") ?? "null");
+    const v2 = JSON.parse(window.localStorage.getItem("ioting.mock.db.v4") ?? "null");
     expect(v2?.items).toHaveLength(150);
     expect(window.localStorage.getItem("ioting.mock.db.v1")).not.toBeNull();
   });

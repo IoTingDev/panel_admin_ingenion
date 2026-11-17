@@ -60,6 +60,16 @@ export function ProyectoSheet({
       etiquetas: proyecto?.etiquetas?.join(", ") ?? "",
     });
   }, [open, proyecto, clienteId, form]);
+  // Al pasar a «Finalizado» se pide la fecha de fin: por defecto hoy, editable.
+  const estadoForm = form.watch("estado");
+  useEffect(() => {
+    if (
+      estadoForm === "finalizado" &&
+      proyecto?.estado !== "finalizado" &&
+      !form.getValues("fechaFin")
+    )
+      form.setValue("fechaFin", hoyBogota());
+  }, [estadoForm, proyecto, form]);
   const mutation = useApiMutation((v: ProyectoForm) => {
     const data = {
       ...v,
@@ -82,6 +92,10 @@ export function ProyectoSheet({
         <form
           className="mt-6 space-y-4"
           onSubmit={form.handleSubmit(async (v) => {
+            if (v.estado === "finalizado" && !v.fechaFin && proyecto?.estado !== "finalizado") {
+              form.setError("fechaFin", { message: "Indique la fecha de fin del proyecto" });
+              return;
+            }
             await mutation.mutateAsync(v);
             onClose();
           })}

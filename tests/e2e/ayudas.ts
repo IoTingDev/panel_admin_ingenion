@@ -55,8 +55,8 @@ export type DbE2E = {
 
 /** Lee la base guardada (esperando a que exista: se crea con la primera consulta). */
 export async function leerDb(page: Page): Promise<DbE2E> {
-  await page.waitForFunction(() => !!localStorage.getItem("ioting.mock.db.v3"));
-  return page.evaluate(() => JSON.parse(localStorage.getItem("ioting.mock.db.v3")!));
+  await page.waitForFunction(() => !!localStorage.getItem("ioting.mock.db.v4"));
+  return page.evaluate(() => JSON.parse(localStorage.getItem("ioting.mock.db.v4")!));
 }
 
 /** Arrastra y suelta con eventos de ratón por pasos (el drag HTML5 necesita movimiento intermedio). */

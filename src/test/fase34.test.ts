@@ -320,9 +320,7 @@ describe("Fase 4 — clientes y sectores configurables", () => {
   it("incluye residencial, comercial, industrial e institucional y guarda dirección y tipo", async () => {
     const cfg = await api.configuracion.get();
     for (const s of [
-      "cacao",
-      "café",
-      "mango",
+      "Agroindustrial",
       "residencial",
       "comercial",
       "industrial",
@@ -330,6 +328,8 @@ describe("Fase 4 — clientes y sectores configurables", () => {
       "otro",
     ])
       expect(cfg.sectores).toContain(s);
+    // Parte C: los tres sectores retirados ya no son opciones.
+    for (const s of ["cacao", "café", "mango"]) expect(cfg.sectores).not.toContain(s);
     const c = await api.clientes.create({
       razonSocial: "Casa Pérez",
       sector: "residencial",

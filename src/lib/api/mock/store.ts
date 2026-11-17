@@ -4,8 +4,9 @@ import type { Auditoria, Cliente } from "../types";
 import { completarDb, migrarADbActual } from "./migracion";
 import { ACTOR, buildSeed, type MockDb } from "./seed";
 
-export const DB_KEY = "ioting.mock.db.v3";
+export const DB_KEY = "ioting.mock.db.v4";
 /** Las bases anteriores se conservan intactas como respaldo tras migrar. */
+export const DB_KEY_V3 = "ioting.mock.db.v3";
 export const DB_KEY_V2 = "ioting.mock.db.v2";
 export const DB_KEY_V1 = "ioting.mock.db.v1";
 export const SESSION_KEY = "ioting.mock.session.v1";
@@ -28,9 +29,9 @@ export function db(): MockDb {
         /* reseed */
       }
     }
-    // La más reciente de las anteriores: v2 si existe, si no v1. Se migra, se guarda como v3 y
+    // La más reciente de las anteriores: v3, si no v2, si no v1. Se migra, se guarda como v4 y
     // la original queda intacta.
-    for (const clave of [DB_KEY_V2, DB_KEY_V1]) {
+    for (const clave of [DB_KEY_V3, DB_KEY_V2, DB_KEY_V1]) {
       const previa = window.localStorage.getItem(clave);
       if (!previa) continue;
       try {

@@ -19,6 +19,8 @@ import {
   useTrabajos,
 } from "@/hooks/use-api";
 import {
+  compararServicios,
+  diaEntrega,
   ESTADOS_TRABAJO,
   ROTULO_ESTADO_TRABAJO,
   ROTULO_TIPO_TRABAJO,
@@ -75,15 +77,18 @@ export function TrabajosView({ clienteId = "" }: { clienteId?: string }) {
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
   const mover = useCambioEstado(setConfirm);
   const nombreCliente = (id: string) => clientes.find((c) => c.id === id)?.razonSocial ?? "—";
-  const rows = trabajos.filter(
-    (t) =>
-      (!cl || t.clienteId === cl) &&
-      (!tipo || t.tipo === tipo) &&
-      (!estado || t.estado === estado) &&
-      (!desde || (!!t.fechaProgramada && t.fechaProgramada.slice(0, 10) >= desde)) &&
-      (!hasta || (!!t.fechaProgramada && t.fechaProgramada.slice(0, 10) <= hasta)) &&
-      `${t.codigo} ${t.titulo}`.toLowerCase().includes(q.toLowerCase()),
-  );
+  const rows = trabajos
+    .filter(
+      (t) =>
+        (!cl || t.clienteId === cl) &&
+        (!tipo || t.tipo === tipo) &&
+        (!estado || t.estado === estado) &&
+        (!desde || (!!t.fechaProgramada && t.fechaProgramada.slice(0, 10) >= desde)) &&
+        (!hasta || (!!t.fechaProgramada && t.fechaProgramada.slice(0, 10) <= hasta)) &&
+        `${t.codigo} ${t.titulo}`.toLowerCase().includes(q.toLowerCase()),
+    )
+    // Orden por defecto (Parte E): entrega más reciente primero; ver `compararServicios`.
+    .sort(compararServicios);
   const pg = usePagination(rows);
   if (isLoading) return <Loading />;
   return (
@@ -223,6 +228,7 @@ export function TrabajosView({ clienteId = "" }: { clienteId?: string }) {
                 <th>Responsable</th>
                 <th>Estado</th>
                 <th>Programado</th>
+                <th>Fecha de entrega</th>
               </tr>
             </thead>
             <tbody>
@@ -253,6 +259,9 @@ export function TrabajosView({ clienteId = "" }: { clienteId?: string }) {
                     <Estado t={t} />
                   </td>
                   <td className="whitespace-nowrap">{fmtFecha(t.fechaProgramada)}</td>
+                  <td className="whitespace-nowrap" data-testid="entrega-servicio">
+                    {diaEntrega(t) ? fmtFecha(t.fechaFin) : "—"}
+                  </td>
                 </tr>
               ))}
             </tbody>

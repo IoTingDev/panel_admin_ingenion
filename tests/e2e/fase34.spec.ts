@@ -214,8 +214,10 @@ test("configuración: sectores editables; uno en uso no se puede quitar", async 
   await page.getByRole("button", { name: "Guardar sectores" }).click();
   await expect(page.locator("body")).toContainText("Sectores guardados");
   expect((await leerDb(page)).config.sectores).toContain("minería");
-  // «cacao» lo usa un cliente de la semilla: su botón está deshabilitado.
-  await expect(page.getByRole("button", { name: "Quitar el sector cacao" })).toBeDisabled();
+  // «Agroindustrial» lo usa un cliente de la semilla: su botón está deshabilitado.
+  await expect(
+    page.getByRole("button", { name: "Quitar el sector Agroindustrial" }),
+  ).toBeDisabled();
   await expect(page.getByRole("button", { name: "Quitar el sector minería" })).toBeEnabled();
 });
 
