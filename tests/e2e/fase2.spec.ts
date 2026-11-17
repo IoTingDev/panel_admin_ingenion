@@ -72,12 +72,12 @@ test("importar la plantilla con valores y ver el valor del inventario (cifras co
   const existencia = activos.reduce((a, i) => a + stockDeDb(db, i.sku) * 10_000, 0);
   const vida: Record<string, number | null> = {
     componentes: null,
-    herramientas: 5,
-    equipos: 5,
+    herramientas: 10, // panel v4.1: vida útil de 10 años
+    equipos: 10,
   };
   const estimado = activos.reduce((a, i) => {
     const v = vida[i.grupo];
-    const factor = v === null ? 1 : Math.max(0.1, 1 - (ANIO - 2025) / v!);
+    const factor = v === null ? 1 : Math.max(0.3, 1 - (ANIO - 2025) / v!);
     return a + Math.round(stockDeDb(db, i.sku) * 10_000 * factor);
   }, 0);
   const invertido = activos.reduce((a, i) => a + i.cantidad_inicial * 10_000, 0);

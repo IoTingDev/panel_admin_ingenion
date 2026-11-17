@@ -203,3 +203,25 @@ test("E — un servicio sin completar muestra su fecha programada en tono secund
   await expect(page.getByLabel("Fecha de entrega")).toBeVisible();
   await expect(page.getByLabel("Fecha de fin")).toHaveCount(0);
 });
+
+test("F — el valor depreciado es opcional: oculto por defecto, se muestra al pedirlo y se recuerda", async ({
+  page,
+}) => {
+  await entrar(page);
+  await page.goto("/inventario");
+  const interruptor = page.getByTestId("alternar-depreciado");
+  await expect(interruptor).toHaveAttribute("aria-checked", "false");
+  await expect(page.getByTestId("detalle-depreciado")).toHaveCount(0);
+  await expect(page.getByTestId("depreciado-herramientas")).toHaveCount(0);
+  await expect(page.getByTestId("valor-tipo-componentes")).toBeVisible();
+  await interruptor.click();
+  await expect(interruptor).toHaveAttribute("aria-checked", "true");
+  await expect(page.getByTestId("depreciado-herramientas")).toContainText("Depreciado:");
+  await expect(page.getByTestId("depreciado-equipos")).toContainText("conserva");
+  await expect(page.getByTestId("depreciado-componentes")).toHaveCount(0);
+  await expect(page.getByTestId("detalle-depreciado")).toContainText("conserva como mínimo 30 %");
+  await page.reload();
+  await expect(page.getByTestId("alternar-depreciado")).toHaveAttribute("aria-checked", "true");
+  await page.getByTestId("alternar-depreciado").click();
+  await expect(page.getByTestId("depreciado-herramientas")).toHaveCount(0);
+});

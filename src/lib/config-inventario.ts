@@ -61,8 +61,9 @@ export const CONFIG_INVENTARIO_DEFECTO: ConfigInventario = {
     "Accesorios de instalación": "CAB",
   },
   depreciacion: {
-    aniosPorGrupo: { componentes: null, herramientas: 5, equipos: 5 },
-    residualPct: 10,
+    // Panel v4 (2026-11-18): vida útil más larga y residual mayor, a pedido de Juan (equipos bien cuidados).
+    aniosPorGrupo: { componentes: null, herramientas: 10, equipos: 10 },
+    residualPct: 30,
   },
 };
 
