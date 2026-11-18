@@ -398,6 +398,12 @@ export function ProyectoDetail({ id }: { id: string }) {
                 <dt className="text-xs text-muted-foreground">Fin</dt>
                 <dd className="mt-1">{fmtFecha(p.fechaFin)}</dd>
               </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">Valor pactado</dt>
+                <dd className="mt-1" data-testid="valor-pactado-proyecto">
+                  {p.valorPactado === undefined ? "—" : fmtCop(p.valorPactado)}
+                </dd>
+              </div>
             </dl>
           </div>
         </TabsContent>

@@ -147,6 +147,7 @@ cambios de modelo** en la v2: solo se amplía la cascada (§5.4).
 | `estado`                     | `en_desarrollo` \| `activo` \| `pausado` \| `finalizado` \| `baja` | Rótulos de la UI: En desarrollo, **En operación** (`activo`), Pausado, Finalizado, Baja. `borrador` **ya no existe**: se migra a `en_desarrollo`. |
 | `fechaInicio`, `fechaFin`    | ISO, opc.                                                          | **Fecha real indicada por la persona**: por defecto hoy, **se permite el pasado**. `fechaFin ≥ fechaInicio`.                                      |
 | `registradoEn`               | ISO                                                                | Momento técnico del registro, **aparte** de `fechaInicio`.                                                                                        |
+| `valorPactado`               | number (COP entero ≥ 0), opc.                                      | **Informativo** (aditivo, panel v4.2), como en los servicios técnicos: la facturación vive en Alegra. La API rechaza negativos y decimales.       |
 | `etiquetas`                  | string[], opc.                                                     |                                                                                                                                                   |
 | `esDemo`                     | boolean, opc.                                                      |                                                                                                                                                   |
 

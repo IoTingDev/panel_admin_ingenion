@@ -51,6 +51,7 @@ function validarProyecto(
     nombre: string;
     fechaInicio?: string | undefined;
     fechaFin?: string | undefined;
+    valorPactado?: number | undefined;
   },
   nuevo: boolean,
 ) {
@@ -63,6 +64,8 @@ function validarProyecto(
   if (!p.nombre || !p.nombre.trim()) throw new Error("El nombre del proyecto es obligatorio.");
   if (p.fechaInicio && p.fechaFin && p.fechaFin.slice(0, 10) < p.fechaInicio.slice(0, 10))
     throw new Error("La fecha de fin no puede ser anterior a la de inicio.");
+  if (p.valorPactado !== undefined && (!Number.isInteger(p.valorPactado) || p.valorPactado < 0))
+    throw new Error("El valor pactado debe ser un entero COP ≥ 0.");
 }
 
 const existeDestino = (tipo: "proyecto" | "trabajo", id: string) => {

@@ -1,8 +1,9 @@
 // Ingresos por servicios (por tipo y por sector) y etiquetas con la primera letra en mayúscula.
 import { describe, expect, it } from "vitest";
 import { capitalizar } from "@/lib/format";
-import { resumenIngresos } from "@/lib/ingresos";
-import type { MovimientoInventario, TrabajoTecnico } from "@/lib/api";
+import { resumenIngresos, resumenProyectos } from "@/lib/ingresos";
+import { mockApi, resetMemoria } from "@/lib/api/mock";
+import type { MovimientoInventario, Proyecto, TrabajoTecnico } from "@/lib/api";
 
 const cliente = (id: string, sector: string) => ({ id, sector });
 const clientes = [
@@ -169,5 +170,84 @@ describe("capitalizar (solo para mostrar)", () => {
     expect(capitalizar("café")).toBe("Café");
     expect(capitalizar("óptica")).toBe("Óptica");
     expect(capitalizar("")).toBe("");
+  });
+});
+
+describe("Proyectos I+D+I: valor pactado", () => {
+  const p = (
+    id: string,
+    estado: Proyecto["estado"],
+    valorPactado: number | undefined,
+    fechas: { fechaInicio?: string; fechaFin?: string } = {},
+  ): Proyecto => ({
+    id,
+    clienteId: "c1",
+    nombre: `Proyecto ${id}`,
+    estado,
+    valorPactado,
+    ...fechas,
+  });
+  const proyectos = [
+    p("a", "finalizado", 10_000_000, { fechaInicio: "2025-01-01", fechaFin: "2026-03-01" }),
+    p("b", "finalizado", 4_000_000, { fechaInicio: "2024-01-01", fechaFin: "2025-06-01" }),
+    p("c", "activo", 6_000_000, { fechaInicio: "2026-02-01" }),
+    p("d", "en_desarrollo", undefined, { fechaInicio: "2026-05-01" }),
+    p("e", "baja", 99_000_000, { fechaInicio: "2026-01-01" }),
+  ];
+  const salidaP = (destinoId: string, cantidad: number, costo: number): MovimientoInventario => ({
+    id: `mp${destinoId}`,
+    fecha: "2026-05-01T12:00:00-05:00",
+    sku: "X-1",
+    tipo: "Salida",
+    cantidad,
+    destinoTipo: "proyecto",
+    destinoId,
+    costoAlSalir: costo,
+  });
+  it("suma el valor pactado por vigentes y finalizados; la baja no cuenta; un proyecto sin valor no suma", () => {
+    const r = resumenProyectos({ proyectos, movs: [], anio: "" });
+    expect(r.filas.map((f) => [f.grupo, f.proyectos, f.conValor, f.valorPactado])).toEqual([
+      ["vigentes", 2, 1, 6_000_000],
+      ["finalizados", 2, 2, 14_000_000],
+    ]);
+    expect([r.total.proyectos, r.total.valorPactado, r.sinValor]).toEqual([4, 20_000_000, 1]);
+    expect(r.total.valorPactado).not.toBe(20_000_000 + 99_000_000);
+    expect(r.total.margenPct).toBeNull(); // sin materiales no se inventa margen
+  });
+  it("el material asociado al proyecto resta del margen; el año filtra por fin (finalizados) o inicio (vigentes)", () => {
+    const r = resumenProyectos({ proyectos, movs: [salidaP("a", 4, 500_000)], anio: "" });
+    expect(r.filas[1]?.materiales).toBe(2_000_000);
+    expect(r.filas[1]?.margen).toBe(14_000_000 - 2_000_000);
+    expect(r.filas[1]?.margenPct).toBeCloseTo((12_000_000 / 14_000_000) * 100, 6);
+    const a26 = resumenProyectos({ proyectos, movs: [], anio: "2026" });
+    expect(a26.filas.map((f) => [f.grupo, f.valorPactado])).toEqual([
+      ["vigentes", 6_000_000],
+      ["finalizados", 10_000_000],
+    ]);
+  });
+  it("la API acepta un valor pactado entero ≥ 0 y rechaza uno negativo o con decimales", async () => {
+    window.localStorage.clear();
+    resetMemoria();
+    const [c] = await mockApi.clientes.list();
+    if (!c) throw new Error("sin clientes");
+    const ok = await mockApi.proyectos.create({
+      clienteId: c.id,
+      nombre: "Proyecto con valor",
+      estado: "en_desarrollo",
+      valorPactado: 8_500_000,
+    });
+    expect((await mockApi.proyectos.get(ok.id))?.valorPactado).toBe(8_500_000);
+    await expect(
+      mockApi.proyectos.create({
+        clienteId: c.id,
+        nombre: "Negativo",
+        estado: "activo",
+        valorPactado: -1,
+      }),
+    ).rejects.toThrow(/valor pactado/i);
+    await expect(mockApi.proyectos.update(ok.id, { valorPactado: 10.5 })).rejects.toThrow(
+      /valor pactado/i,
+    );
+    expect((await mockApi.proyectos.get(ok.id))?.valorPactado).toBe(8_500_000); // el rechazo no cambió nada
   });
 });

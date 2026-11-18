@@ -318,3 +318,33 @@ test("Etiquetas — sectores y estados con la primera letra en mayúscula (el va
   await expect(grafico).toContainText("Agroindustrial");
   await expect(grafico).toContainText("Otro");
 });
+
+test("Proyectos — el valor pactado se registra en el formulario, se ve en el detalle y entra en la pantalla de ingresos", async ({
+  page,
+}) => {
+  await entrar(page);
+  await page.goto("/proyectos");
+  await page
+    .getByRole("button", { name: /Nuevo proyecto/ })
+    .first()
+    .click();
+  await page.getByLabel("Nombre", { exact: true }).fill("Proyecto de prueba con valor");
+  await page.locator("#p-cliente").selectOption({ index: 1 });
+  await page.getByLabel("Valor pactado (COP, informativo)").fill("8500000");
+  await page
+    .getByRole("button", { name: /Guardar|Crear/ })
+    .last()
+    .click();
+  await expect(page.locator("body")).toContainText("Proyecto guardado");
+  const db = await leerDb(page);
+  const nuevo = (
+    db.proyectos as unknown as { id: string; nombre: string; valorPactado?: number }[]
+  ).find((p) => p.nombre === "Proyecto de prueba con valor");
+  expect(nuevo?.valorPactado).toBe(8_500_000);
+  await page.goto(`/proyectos/${nuevo?.id}`);
+  await expect(page.getByTestId("valor-pactado-proyecto")).toContainText(pesos(8_500_000));
+  await page.goto("/servicios-tecnicos/ingresos");
+  const vig = page.getByTestId("proyectos-vigentes");
+  await expect(vig).toContainText(pesos(8_500_000));
+  await expect(page.getByTestId("proyectos-total")).toContainText(pesos(8_500_000));
+});

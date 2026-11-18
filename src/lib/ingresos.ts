@@ -1,4 +1,10 @@
-import type { Cliente, MovimientoInventario, TipoTrabajo, TrabajoTecnico } from "@/lib/api/types";
+import type {
+  Cliente,
+  MovimientoInventario,
+  Proyecto,
+  TipoTrabajo,
+  TrabajoTecnico,
+} from "@/lib/api/types";
 import { diaEntrega } from "@/lib/dominio";
 
 /**
@@ -156,5 +162,85 @@ export function resumenIngresos(a: {
         pctIngresos: total.ingresos > 0 ? (x.ingresos / total.ingresos) * 100 : 0,
       }))
       .sort((p, q) => q.servicios - p.servicios || q.ingresos - p.ingresos),
+  };
+}
+
+export interface FilaProyectos {
+  grupo: "vigentes" | "finalizados";
+  proyectos: number;
+  conValor: number;
+  valorPactado: number;
+  materiales: number;
+  margen: number;
+  /** Margen / valor pactado. null si no hay materiales registrados. */
+  margenPct: number | null;
+}
+export interface ResumenProyectos {
+  total: FilaProyectos;
+  filas: FilaProyectos[];
+  sinValor: number;
+}
+
+/**
+ * Proyectos I+D+I: valor pactado (informativo) y material asociado, por «vigentes» (en desarrollo, en operación,
+ * pausados) y «finalizados». Los dados de baja no cuentan. El año filtra por la fecha de fin (finalizados) o la
+ * de inicio (vigentes). Se muestra aparte de los servicios técnicos: no se mezclan en un solo total.
+ */
+export function resumenProyectos(a: {
+  proyectos: Proyecto[];
+  movs: MovimientoInventario[];
+  anio: string;
+}): ResumenProyectos {
+  const material = new Map<string, number>();
+  for (const m of a.movs) {
+    if (m.tipo !== "Salida" || m.destinoTipo !== "proyecto" || !m.destinoId) continue;
+    material.set(
+      m.destinoId,
+      (material.get(m.destinoId) ?? 0) + m.cantidad * (m.costoAlSalir ?? 0),
+    );
+  }
+  const nuevo = (grupo: FilaProyectos["grupo"]): FilaProyectos => ({
+    grupo,
+    proyectos: 0,
+    conValor: 0,
+    valorPactado: 0,
+    materiales: 0,
+    margen: 0,
+    margenPct: null,
+  });
+  const vig = nuevo("vigentes");
+  const fin = nuevo("finalizados");
+  for (const p of a.proyectos) {
+    if (p.estado === "baja") continue;
+    const esFin = p.estado === "finalizado";
+    const dia = esFin ? p.fechaFin : p.fechaInicio;
+    if (a.anio && dia?.slice(0, 4) !== a.anio) continue;
+    const f = esFin ? fin : vig;
+    const mat = material.get(p.id) ?? 0;
+    f.proyectos++;
+    f.materiales += mat;
+    if (typeof p.valorPactado === "number") {
+      f.conValor++;
+      f.valorPactado += p.valorPactado;
+      f.margen += p.valorPactado - mat;
+    }
+  }
+  const cerrar = (f: FilaProyectos): FilaProyectos => ({
+    ...f,
+    margenPct: f.materiales > 0 && f.valorPactado > 0 ? (f.margen / f.valorPactado) * 100 : null,
+  });
+  const total = cerrar({
+    grupo: "vigentes",
+    proyectos: vig.proyectos + fin.proyectos,
+    conValor: vig.conValor + fin.conValor,
+    valorPactado: vig.valorPactado + fin.valorPactado,
+    materiales: vig.materiales + fin.materiales,
+    margen: vig.margen + fin.margen,
+    margenPct: null,
+  });
+  return {
+    total,
+    filas: [cerrar(vig), cerrar(fin)],
+    sinValor: total.proyectos - total.conValor,
   };
 }

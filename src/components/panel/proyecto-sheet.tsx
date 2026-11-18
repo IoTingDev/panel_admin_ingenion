@@ -26,6 +26,9 @@ const proyectoSchema = z
     estado: z.enum(["en_desarrollo", "activo", "pausado", "finalizado", "baja"]),
     fechaInicio: z.string(),
     fechaFin: z.string(),
+    valorPactado: z.string().refine((v) => v.trim() === "" || /^\d+$/.test(v.trim()), {
+      message: "Solo números enteros en pesos",
+    }),
     responsable: z.string(),
     etiquetas: z.string(),
   })
@@ -56,6 +59,7 @@ export function ProyectoSheet({
       // La fecha real de inicio: por defecto hoy, editable y puede ser pasada.
       fechaInicio: proyecto ? (proyecto.fechaInicio?.slice(0, 10) ?? "") : hoyBogota(),
       fechaFin: proyecto?.fechaFin?.slice(0, 10) ?? "",
+      valorPactado: proyecto?.valorPactado === undefined ? "" : String(proyecto.valorPactado),
       responsable: proyecto?.responsable ?? "",
       etiquetas: proyecto?.etiquetas?.join(", ") ?? "",
     });
@@ -75,6 +79,7 @@ export function ProyectoSheet({
       ...v,
       fechaInicio: v.fechaInicio ? `${v.fechaInicio}T12:00:00-05:00` : undefined,
       fechaFin: v.fechaFin ? `${v.fechaFin}T12:00:00-05:00` : undefined,
+      valorPactado: v.valorPactado.trim() === "" ? undefined : Number(v.valorPactado),
       etiquetas: v.etiquetas
         .split(",")
         .map((s) => s.trim())
@@ -125,6 +130,15 @@ export function ProyectoSheet({
               </div>
             ))}
           </div>
+          <Label htmlFor="p-valor">Valor pactado (COP, informativo)</Label>
+          <Input
+            id="p-valor"
+            type="number"
+            min="0"
+            step="1"
+            placeholder="La facturación vive en Alegra"
+            {...form.register("valorPactado")}
+          />
           <Label htmlFor="p-estado">Estado</Label>
           <select id="p-estado" className="app-select w-full" {...form.register("estado")}>
             {COLUMNAS_PROYECTO.map((s) => (

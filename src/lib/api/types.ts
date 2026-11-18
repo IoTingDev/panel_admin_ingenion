@@ -55,6 +55,8 @@ export interface Proyecto {
   etiquetas?: string[] | undefined;
   /** Momento técnico del registro; `fechaInicio` es la fecha real que indica la persona. */
   registradoEn?: string | undefined;
+  /** COP, informativo (como en los servicios técnicos): la facturación vive en Alegra. */
+  valorPactado?: number | undefined;
   esDemo?: boolean | undefined;
 }
 
