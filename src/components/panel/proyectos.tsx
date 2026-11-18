@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
+  Banknote,
   FolderKanban,
   Plus,
   Table2,
@@ -20,7 +21,12 @@ import {
   useApiMutation,
 } from "@/hooks/use-api";
 import { fmtCop, fmtFecha, fmtFechaHora } from "@/lib/format";
-import { COLUMNAS_PROYECTO, ESTADOS_PROYECTO, ROTULO_ESTADO_PROYECTO } from "@/lib/dominio";
+import {
+  COLUMNAS_PROYECTO,
+  ESTADOS_PROYECTO,
+  ROTULO_ESTADO_PROYECTO,
+  ROTULO_TIPO_PROYECTO,
+} from "@/lib/dominio";
 import { materialDeDestino } from "@/lib/material";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -94,10 +100,20 @@ export function ProyectosView({ clienteId = "" }: { clienteId?: string }) {
         title="Proyectos I+D+I"
         subtitle="Soluciones IoT, de la idea a la operación."
         actions={
-          <Button onClick={() => setOpen(true)}>
-            <Plus />
-            Nuevo proyecto
-          </Button>
+          <>
+            {!clienteId && (
+              <Button asChild variant="outline">
+                <Link to="/proyectos/ingresos">
+                  <Banknote />
+                  Ingresos
+                </Link>
+              </Button>
+            )}
+            <Button onClick={() => setOpen(true)}>
+              <Plus />
+              Nuevo proyecto
+            </Button>
+          </>
         }
       />
       <div className="mb-5 flex flex-wrap gap-3">
@@ -397,6 +413,12 @@ export function ProyectoDetail({ id }: { id: string }) {
               <div>
                 <dt className="text-xs text-muted-foreground">Fin</dt>
                 <dd className="mt-1">{fmtFecha(p.fechaFin)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">Tipo de proyecto</dt>
+                <dd className="mt-1" data-testid="tipo-proyecto">
+                  {p.tipo ? ROTULO_TIPO_PROYECTO[p.tipo] : "Sin tipo"}
+                </dd>
               </div>
               <div>
                 <dt className="text-xs text-muted-foreground">Valor pactado</dt>

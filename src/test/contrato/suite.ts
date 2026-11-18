@@ -286,6 +286,32 @@ export function ejecutarSuiteContrato(
         );
       });
 
+      it("proyecto: el tipo es opcional y solo admite software, iot, monitoreo o automatizacion", async () => {
+        const c = await clienteActivo();
+        const sin = await api.proyectos.create({
+          clienteId: c.id,
+          nombre: "Sin tipo",
+          estado: "activo",
+        });
+        expect(sin.tipo).toBeUndefined();
+        const con = await api.proyectos.create({
+          clienteId: c.id,
+          nombre: "Con tipo",
+          estado: "activo",
+          tipo: "iot",
+        });
+        expect((await api.proyectos.get(con.id))?.tipo).toBe("iot");
+        await expect(
+          api.proyectos.create({
+            clienteId: c.id,
+            nombre: "Inventado",
+            estado: "activo",
+            tipo: "hardware" as never,
+          }),
+        ).rejects.toThrow(/tipo de proyecto/i);
+        expect((await api.proyectos.update(con.id, { tipo: "software" })).tipo).toBe("software");
+      });
+
       it("las fechas son reales: pasado permitido, fin ≥ inicio, y el cliente debe estar activo", async () => {
         const c = await clienteActivo();
         const p = await api.proyectos.create({

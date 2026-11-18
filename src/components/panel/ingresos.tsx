@@ -1,30 +1,20 @@
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Banknote, Receipt, Wrench, Boxes } from "lucide-react";
-import { useClientes, useMovimientos, useProyectos, useTrabajos } from "@/hooks/use-api";
+import { useClientes, useMovimientos, useTrabajos } from "@/hooks/use-api";
 import { ROTULO_TIPO_TRABAJO } from "@/lib/dominio";
-import { capitalizar, fmtCop } from "@/lib/format";
-import { resumenIngresos, resumenProyectos, type EstadoIngresos } from "@/lib/ingresos";
+import { capitalizar, fmtCop, fmtPct } from "@/lib/format";
+import { resumenIngresos, type EstadoIngresos } from "@/lib/ingresos";
 import { Button } from "@/components/ui/button";
 import { PageHeader, StatCard } from "./common";
 import { Loading } from "./data-tools";
-
-const fmtPct = (n: number) =>
-  `${new Intl.NumberFormat("es-CO", { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(n)} %`;
+import { BarraPorcentaje as Barra } from "./barra-porcentaje";
 
 const ESTADOS: { value: EstadoIngresos; label: string }[] = [
   { value: "completados", label: "Servicios completados" },
   { value: "pendientes", label: "Programados y en curso (por cobrar)" },
   { value: "todos", label: "Todos menos cancelados" },
 ];
-
-function Barra({ pct, color }: { pct: number; color: string }) {
-  return (
-    <div className="h-2 min-w-24 overflow-hidden rounded-full bg-muted">
-      <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
-    </div>
-  );
-}
 
 /**
  * «Ingresos por servicios»: ingresos y servicios por tipo de trabajo y por sector del cliente, para ver qué
@@ -35,14 +25,12 @@ export function IngresosView() {
   const { data: trabajos = [], isLoading } = useTrabajos();
   const { data: clientes = [] } = useClientes();
   const { data: movs = [] } = useMovimientos();
-  const { data: proyectos = [] } = useProyectos();
   const [estado, setEstado] = useState<EstadoIngresos>("completados");
   const [anio, setAnio] = useState("");
   const r = useMemo(
     () => resumenIngresos({ trabajos, clientes, movs, filtro: { estado, anio } }),
     [trabajos, clientes, movs, estado, anio],
   );
-  const pr = useMemo(() => resumenProyectos({ proyectos, movs, anio }), [proyectos, movs, anio]);
   if (isLoading) return <Loading />;
   const hayMateriales = r.materiales > 0;
   return (
@@ -223,57 +211,6 @@ export function IngresosView() {
             </tbody>
           </table>
         </div>
-      </section>
-
-      <section
-        data-testid="ingresos-proyectos"
-        aria-label="Valor pactado de los proyectos I+D+I"
-        className="mb-5 rounded-xl border bg-card p-5 shadow-soft"
-      >
-        <h3 className="font-semibold">Proyectos I+D+I</h3>
-        <p className="mb-3 text-sm text-muted-foreground">
-          Valor pactado de los proyectos (informativo). Va aparte de los servicios técnicos: no se
-          suman en un solo total. Los proyectos dados de baja no cuentan.
-        </p>
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Proyectos</th>
-                <th>Cantidad</th>
-                <th>Con valor pactado</th>
-                <th>Valor pactado</th>
-                <th>Materiales</th>
-                <th>Margen sobre materiales</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[...pr.filas, { ...pr.total, grupo: "total" as const }].map((f) => (
-                <tr key={f.grupo} data-testid={`proyectos-${f.grupo}`}>
-                  <td className="font-medium">
-                    {f.grupo === "vigentes"
-                      ? "Vigentes"
-                      : f.grupo === "finalizados"
-                        ? "Finalizados"
-                        : "Total"}
-                  </td>
-                  <td>{f.proyectos}</td>
-                  <td>{f.conValor}</td>
-                  <td className="font-semibold tabular-nums">{fmtCop(f.valorPactado)}</td>
-                  <td className="tabular-nums">{f.materiales > 0 ? fmtCop(f.materiales) : "—"}</td>
-                  <td className="tabular-nums">
-                    {f.margenPct === null ? "—" : `${fmtCop(f.margen)} · ${fmtPct(f.margenPct)}`}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {pr.total.proyectos > 0 && pr.sinValor === pr.total.proyectos && (
-          <p className="mt-3 text-xs text-muted-foreground">
-            Ningún proyecto tiene valor pactado todavía: se registra en el formulario del proyecto.
-          </p>
-        )}
       </section>
 
       <p
