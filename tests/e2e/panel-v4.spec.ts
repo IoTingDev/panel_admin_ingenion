@@ -225,3 +225,96 @@ test("F — el valor depreciado es opcional: oculto por defecto, se muestra al p
   await page.getByTestId("alternar-depreciado").click();
   await expect(page.getByTestId("depreciado-herramientas")).toHaveCount(0);
 });
+
+const normaliza = (s: string) => s.replace(/\s+/g, " ").trim();
+const pesos = (n: number) =>
+  normaliza(
+    new Intl.NumberFormat("es-CO", {
+      style: "currency",
+      currency: "COP",
+      maximumFractionDigits: 0,
+    }).format(n),
+  );
+
+test("Ingresos — pantalla por tipo de trabajo y por sector, con cifras que coinciden con la base", async ({
+  page,
+}) => {
+  await entrar(page);
+  await page.goto("/servicios-tecnicos");
+  await page.getByRole("link", { name: "Ingresos" }).click();
+  await expect(page.getByRole("heading", { name: "Ingresos por servicios" })).toBeVisible();
+  const db = await leerDb(page);
+  type T = { id: string; tipo: string; clienteId: string; estado: string; valorPactado?: number };
+  const ts = (db.trabajos as unknown as T[]).filter((x) => x.estado === "completado");
+  const total = ts.reduce((s, x) => s + (x.valorPactado ?? 0), 0);
+  expect(total).toBeGreaterThan(0);
+  await expect(page.getByText("Ingresos (valor pactado)")).toBeVisible();
+  await expect(page.locator("main")).toContainText(pesos(total));
+  // por tipo: la fila del tipo con más ingresos va primero y su suma coincide
+  const porTipo = new Map<string, number>();
+  for (const x of ts) porTipo.set(x.tipo, (porTipo.get(x.tipo) ?? 0) + (x.valorPactado ?? 0));
+  const [mejor, suma] = [...porTipo.entries()].sort((a, b) => b[1] - a[1])[0] ?? ["", 0];
+  const filas = page.getByTestId("ingresos-por-tipo").locator("tbody tr");
+  await expect(filas.first()).toHaveAttribute("data-testid", `tipo-${mejor}`);
+  await expect(filas.first()).toContainText(pesos(suma));
+  // por sector: ordenado por servicios solicitados
+  const sectorDe = new Map(db.clientes.map((c) => [c.id, c.sector]));
+  const porSector = new Map<string, number>();
+  for (const x of ts) {
+    const s = sectorDe.get(x.clienteId) ?? "Sin sector";
+    porSector.set(s, (porSector.get(s) ?? 0) + 1);
+  }
+  const maxServicios = Math.max(...porSector.values());
+  const primera = page.getByTestId("ingresos-por-sector").locator("tbody tr").first();
+  await expect(primera.locator("td").nth(1)).toHaveText(String(maxServicios));
+  // los sectores se muestran con la primera letra en mayúscula
+  const sectores = await page
+    .getByTestId("ingresos-por-sector")
+    .locator("tbody tr td:first-child")
+    .allTextContents();
+  for (const s of sectores) expect(s[0]).toBe(s[0]?.toLocaleUpperCase("es"));
+  await expect(page.getByTestId("nota-ingresos")).toContainText("Alegra");
+  // el filtro de estado cambia las cifras (programados y en curso)
+  await page.getByLabel("Estado de los servicios").selectOption("pendientes");
+  await expect(page.locator("main")).not.toContainText(pesos(total));
+});
+
+test("Etiquetas — sectores y estados con la primera letra en mayúscula (el valor guardado no cambia)", async ({
+  page,
+}) => {
+  await entrar(page);
+  await page.goto("/clientes");
+  await expect(page.locator('select[aria-label="Todos los estados"]')).toBeVisible();
+  const estados = await page
+    .locator('select[aria-label="Todos los estados"] option')
+    .allTextContents();
+  expect(estados).toEqual(["Todos los estados", "Activo", "Suspendido", "Baja"]);
+  const sectores = await page
+    .locator('select[aria-label="Todos los sectores"] option')
+    .allTextContents();
+  for (const s of sectores.slice(1)) expect(s[0]).toBe(s[0]?.toLocaleUpperCase("es"));
+  expect(sectores).toContain("Agroindustrial");
+  expect(sectores).toContain("Residencial");
+  // el formulario de cliente también
+  await page
+    .getByRole("button", { name: /Nuevo cliente/ })
+    .first()
+    .click();
+  const opciones = await page.locator("#sector option").allTextContents();
+  for (const s of opciones) expect(s[0]).toBe(s[0]?.toLocaleUpperCase("es"));
+  // lo guardado sigue en minúscula (solo cambió lo que se ve)
+  const db = await leerDb(page);
+  expect(db.config.sectores).toContain("residencial");
+  expect(db.config.sectores).not.toContain("Residencial");
+  // usuarios: mismo filtro de estados
+  await page.goto("/usuarios");
+  await expect(page.locator('select[aria-label="Todos los estados"]')).toBeVisible();
+  expect(
+    await page.locator('select[aria-label="Todos los estados"] option').allTextContents(),
+  ).toEqual(["Todos los estados", "Activo", "Suspendido", "Baja"]);
+  // Inicio: el gráfico «Clientes por sector»
+  await page.goto("/");
+  const grafico = page.locator("main").getByText("Clientes por sector").locator("..");
+  await expect(grafico).toContainText("Agroindustrial");
+  await expect(grafico).toContainText("Otro");
+});

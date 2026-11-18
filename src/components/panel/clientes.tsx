@@ -21,7 +21,8 @@ import {
   useApiMutation,
   useConfiguracion,
 } from "@/hooks/use-api";
-import { fmtFecha, fmtFechaHora } from "@/lib/format";
+import { capitalizar, fmtFecha, fmtFechaHora } from "@/lib/format";
+import { ESTADOS_CLIENTE } from "@/lib/dominio";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { PageHeader, IconBox, StatusBadge, EmptyState } from "./common";
@@ -96,13 +97,13 @@ export function ClientesView({ nuevo = false }: { nuevo?: boolean }) {
           label="Todos los estados"
           value={estado}
           onChange={setEstado}
-          options={["activo", "suspendido", "baja"]}
+          options={ESTADOS_CLIENTE.map((e) => ({ value: e, label: capitalizar(e) }))}
         />
         <FilterSelect
           label="Todos los sectores"
           value={sector}
           onChange={setSector}
-          options={config?.sectores ?? []}
+          options={(config?.sectores ?? []).map((s) => ({ value: s, label: capitalizar(s) }))}
         />
       </div>
       <DataFrame footer={pg.footer}>
@@ -140,7 +141,7 @@ export function ClientesView({ nuevo = false }: { nuevo?: boolean }) {
                     </div>
                   </div>
                 </td>
-                <td className="capitalize">{c.sector}</td>
+                <td>{capitalizar(c.sector)}</td>
                 <td>{c.ciudad}</td>
                 <td>
                   {usuarios.filter((u) => u.clienteId === c.id && u.estado !== "baja").length}
@@ -292,7 +293,7 @@ export function ClienteDetail({ id }: { id: string }) {
               <dl className="space-y-4 text-sm">
                 <div>
                   <dt className="text-xs text-muted-foreground">Sector</dt>
-                  <dd className="mt-1 capitalize">{c.sector}</dd>
+                  <dd className="mt-1">{capitalizar(c.sector)}</dd>
                 </div>
                 <div>
                   <dt className="text-xs text-muted-foreground">Tipo de cliente</dt>

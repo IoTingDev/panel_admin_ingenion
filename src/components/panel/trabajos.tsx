@@ -3,6 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
   ArrowUpRight,
+  Banknote,
   Columns3,
   Pencil,
   Plus,
@@ -98,10 +99,20 @@ export function TrabajosView({ clienteId = "" }: { clienteId?: string }) {
         title="Servicios técnicos"
         subtitle="CCTV, alarmas, telecomunicaciones, mantenimiento e instalación."
         actions={
-          <Button onClick={() => setOpen(true)}>
-            <Plus />
-            Nuevo servicio técnico
-          </Button>
+          <>
+            {!clienteId && (
+              <Button asChild variant="outline">
+                <Link to="/servicios-tecnicos/ingresos">
+                  <Banknote />
+                  Ingresos
+                </Link>
+              </Button>
+            )}
+            <Button onClick={() => setOpen(true)}>
+              <Plus />
+              Nuevo servicio técnico
+            </Button>
+          </>
         }
       />
       <div className="mb-5 flex flex-wrap gap-3">
