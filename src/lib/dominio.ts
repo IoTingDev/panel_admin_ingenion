@@ -112,3 +112,6 @@ export const ROTULO_TIPO_PROYECTO: Record<TipoProyecto, string> = {
   monitoreo: "Monitoreo",
   automatizacion: "Automatización",
 };
+
+/** Roles de un usuario del portal del cliente, tal como se guardan (se muestran capitalizados). */
+export const ROLES_USUARIO = ["administrador", "operador", "lectura"] as const;

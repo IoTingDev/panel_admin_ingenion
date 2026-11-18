@@ -312,6 +312,18 @@ test("Etiquetas — sectores y estados con la primera letra en mayúscula (el va
   expect(
     await page.locator('select[aria-label="Todos los estados"] option').allTextContents(),
   ).toEqual(["Todos los estados", "Activo", "Suspendido", "Baja"]);
+  // roles: filtro, filas y formulario de invitación, capitalizados (lo guardado sigue en minúscula)
+  expect(
+    await page.locator('select[aria-label="Todos los roles"] option').allTextContents(),
+  ).toEqual(["Todos los roles", "Administrador", "Operador", "Lectura"]);
+  const roles = await page.locator("tbody select option").allTextContents();
+  expect(roles.length).toBeGreaterThan(0);
+  for (const r of roles) expect(r[0]).toBe(r[0]?.toLocaleUpperCase("es"));
+  expect(
+    ((await leerDb(page)).usuarios as unknown as { rol: string }[]).every(
+      (u) => u.rol === u.rol.toLowerCase(),
+    ),
+  ).toBe(true);
   // Inicio: el gráfico «Clientes por sector»
   await page.goto("/");
   const grafico = page.locator("main").getByText("Clientes por sector").locator("..");
