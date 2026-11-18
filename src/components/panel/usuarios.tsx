@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Users, UserPlus, Ban, Trash2, RotateCcw } from "lucide-react";
 import { api, type Estado, type UsuarioCliente, type RolUsuario } from "@/lib/api";
 import { useUsuarios, useClientes, useApiMutation } from "@/hooks/use-api";
-import { fmtFechaHora } from "@/lib/format";
+import { capitalizar, fmtFechaHora } from "@/lib/format";
+import { ESTADOS_CLIENTE, ROLES_USUARIO } from "@/lib/dominio";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -92,13 +93,13 @@ export function UsuariosView({ clienteId = "" }: { clienteId?: string }) {
           label="Todos los roles"
           value={rol}
           onChange={setRol}
-          options={["administrador", "operador", "lectura"]}
+          options={ROLES_USUARIO.map((r) => ({ value: r, label: capitalizar(r) }))}
         />
         <FilterSelect
           label="Todos los estados"
           value={estado}
           onChange={setEstado}
-          options={["activo", "suspendido", "baja"]}
+          options={ESTADOS_CLIENTE.map((e) => ({ value: e, label: capitalizar(e) }))}
         />
       </div>
       <DataFrame footer={pg.footer}>
@@ -150,8 +151,10 @@ export function UsuariosView({ clienteId = "" }: { clienteId?: string }) {
                       });
                     }}
                   >
-                    {["administrador", "operador", "lectura"].map((r) => (
-                      <option key={r}>{r}</option>
+                    {ROLES_USUARIO.map((r) => (
+                      <option key={r} value={r}>
+                        {capitalizar(r)}
+                      </option>
                     ))}
                   </select>
                 </td>
@@ -259,8 +262,10 @@ export function UsuariosView({ clienteId = "" }: { clienteId?: string }) {
               value={inviteRol}
               onChange={(e) => setInviteRol(e.target.value as RolUsuario)}
             >
-              {["administrador", "operador", "lectura"].map((r) => (
-                <option key={r}>{r}</option>
+              {ROLES_USUARIO.map((r) => (
+                <option key={r} value={r}>
+                  {capitalizar(r)}
+                </option>
               ))}
             </select>
             <div className="flex justify-end gap-2 border-t pt-4">

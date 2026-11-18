@@ -60,3 +60,8 @@ export function fmtCop(n: number): string {
     maximumFractionDigits: 0,
   }).format(n);
 }
+
+/** Primera letra en mayúscula, el resto igual: solo para mostrar («residencial» → «Residencial»). */
+export function capitalizar(s: string): string {
+  return s ? s.charAt(0).toLocaleUpperCase("es") + s.slice(1) : s;
+}

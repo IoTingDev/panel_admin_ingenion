@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { api, type Cliente } from "@/lib/api";
 import { useApiMutation, useConfiguracion } from "@/hooks/use-api";
 import { SECTOR_AGROINDUSTRIAL, TIPOS_CLIENTE } from "@/lib/dominio";
+import { capitalizar } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -120,7 +121,9 @@ export function ClienteSheet({
             <Label htmlFor="sector">Sector</Label>
             <select id="sector" className="app-select w-full" {...form.register("sector")}>
               {(config?.sectores ?? [SECTOR_AGROINDUSTRIAL]).map((s) => (
-                <option key={s}>{s}</option>
+                <option key={s} value={s}>
+                  {capitalizar(s)}
+                </option>
               ))}
             </select>
           </div>

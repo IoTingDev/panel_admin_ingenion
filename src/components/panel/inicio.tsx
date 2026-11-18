@@ -40,7 +40,7 @@ import {
 import { stockMap, esStockBajo, hoyBogota } from "@/lib/inventario";
 import { ROTULO_ESTADO_PROYECTO } from "@/lib/dominio";
 import { diasSinRespaldo, hayQueRecordarRespaldo } from "@/lib/respaldo-estado";
-import { fmtNum, fmtFechaHora, isoDia } from "@/lib/format";
+import { capitalizar, fmtNum, fmtFechaHora, isoDia } from "@/lib/format";
 import { PageHeader, StatCard, DemoBadge, Panel } from "./common";
 import { API_MODE } from "@/lib/api";
 import { Loading } from "./data-tools";
@@ -102,7 +102,7 @@ export function InicioView() {
     }))
     .filter((x) => x.value);
   const sectores = [...new Set(clientes.map((x) => x.sector))].map((s) => ({
-    sector: s,
+    sector: capitalizar(s),
     clientes: clientes.filter((x) => x.sector === s && x.estado !== "baja").length,
   }));
   const pausados = proyectos.filter((x) => x.estado === "pausado");

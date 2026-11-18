@@ -99,3 +99,9 @@ export function compararServicios(
   if (!ka && kb) return 1;
   return b.codigo.localeCompare(a.codigo, undefined, { numeric: true });
 }
+
+/** Estados de un cliente o de un usuario del portal, tal como se guardan (se muestran capitalizados). */
+export const ESTADOS_CLIENTE = ["activo", "suspendido", "baja"] as const;
+
+/** Roles de un usuario del portal del cliente, tal como se guardan (se muestran capitalizados). */
+export const ROLES_USUARIO = ["administrador", "operador", "lectura"] as const;
