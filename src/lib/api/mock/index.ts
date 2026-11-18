@@ -11,6 +11,7 @@ import {
 import { grupoDeCategoria, validarConfigInventario } from "@/lib/config-inventario";
 import { previsualizarValores, promedioPonderado, tieneCompras } from "@/lib/valoracion";
 import { uid } from "@/lib/format";
+import { TIPOS_PROYECTO } from "@/lib/dominio";
 import type { Api, Auditoria, Cliente, ItemInventario, NuevoMovimiento, Operador } from "../types";
 import { ACTOR, type MockDb } from "./seed";
 import {
@@ -51,6 +52,8 @@ function validarProyecto(
     nombre: string;
     fechaInicio?: string | undefined;
     fechaFin?: string | undefined;
+    valorPactado?: number | undefined;
+    tipo?: string | undefined;
   },
   nuevo: boolean,
 ) {
@@ -63,6 +66,10 @@ function validarProyecto(
   if (!p.nombre || !p.nombre.trim()) throw new Error("El nombre del proyecto es obligatorio.");
   if (p.fechaInicio && p.fechaFin && p.fechaFin.slice(0, 10) < p.fechaInicio.slice(0, 10))
     throw new Error("La fecha de fin no puede ser anterior a la de inicio.");
+  if (p.valorPactado !== undefined && (!Number.isInteger(p.valorPactado) || p.valorPactado < 0))
+    throw new Error("El valor pactado debe ser un entero COP ≥ 0.");
+  if (p.tipo !== undefined && !(TIPOS_PROYECTO as string[]).includes(p.tipo))
+    throw new Error(`Tipo de proyecto inválido: «${p.tipo}».`);
 }
 
 const existeDestino = (tipo: "proyecto" | "trabajo", id: string) => {

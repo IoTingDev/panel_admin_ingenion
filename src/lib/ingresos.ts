@@ -1,4 +1,11 @@
-import type { Cliente, MovimientoInventario, TipoTrabajo, TrabajoTecnico } from "@/lib/api/types";
+import type {
+  Cliente,
+  MovimientoInventario,
+  Proyecto,
+  TipoProyecto,
+  TipoTrabajo,
+  TrabajoTecnico,
+} from "@/lib/api/types";
 import { diaEntrega } from "@/lib/dominio";
 
 /**
@@ -156,5 +163,139 @@ export function resumenIngresos(a: {
         pctIngresos: total.ingresos > 0 ? (x.ingresos / total.ingresos) * 100 : 0,
       }))
       .sort((p, q) => q.servicios - p.servicios || q.ingresos - p.ingresos),
+  };
+}
+
+// ---------------------------------------------------------------------------------------------------
+// Ingresos por proyectos I+D+I: pantalla propia (no se mezcla con los servicios técnicos).
+// ---------------------------------------------------------------------------------------------------
+
+export type EstadoIngresosProyectos = "finalizados" | "vigentes" | "todos";
+
+export interface FiltroIngresosProyectos {
+  estado: EstadoIngresosProyectos;
+  /** AAAA o "" (todos). Año de la fecha de fin (finalizados) o de inicio (vigentes). */
+  anio: string;
+}
+
+type CifrasProyectos = Omit<CifrasIngresos, "servicios"> & { proyectos: number };
+
+export interface FilaTipoProyecto extends CifrasProyectos {
+  /** `sin_tipo` agrupa los proyectos aún sin clasificar. */
+  tipo: TipoProyecto | "sin_tipo";
+  pctIngresos: number;
+}
+export interface FilaSectorProyecto extends CifrasProyectos {
+  sector: string;
+  clientes: number;
+  pctProyectos: number;
+  pctIngresos: number;
+}
+export interface ResumenIngresosProyectos extends CifrasProyectos {
+  sinValor: number;
+  porTipo: FilaTipoProyecto[];
+  porSector: FilaSectorProyecto[];
+  anios: string[];
+}
+
+const VIGENTES = ["en_desarrollo", "activo", "pausado"];
+const incluyeProyecto = (e: EstadoIngresosProyectos, p: Pick<Proyecto, "estado">) =>
+  p.estado !== "baja" &&
+  (e === "todos" ||
+    (e === "finalizados" ? p.estado === "finalizado" : VIGENTES.includes(p.estado)));
+const anioProyecto = (p: Pick<Proyecto, "estado" | "fechaInicio" | "fechaFin">): string =>
+  ((p.estado === "finalizado" ? p.fechaFin : p.fechaInicio) ?? "").slice(0, 4);
+
+const proyectosDe = (a: Acum): CifrasProyectos => {
+  const { servicios, ...resto } = cifras(a);
+  return { proyectos: servicios, ...resto };
+};
+
+/**
+ * Ingresos de los proyectos I+D+I (valor pactado, informativo): por tipo de proyecto y por sector del cliente.
+ * Los dados de baja no cuentan. El costo es solo el material que salió del inventario hacia el proyecto.
+ */
+export function resumenIngresosProyectos(a: {
+  proyectos: Proyecto[];
+  clientes: Pick<Cliente, "id" | "sector">[];
+  movs: MovimientoInventario[];
+  filtro: FiltroIngresosProyectos;
+}): ResumenIngresosProyectos {
+  const sectorDe = new Map(a.clientes.map((c) => [c.id, c.sector]));
+  const enAlcance = a.proyectos.filter(
+    (p) =>
+      incluyeProyecto(a.filtro.estado, p) && (!a.filtro.anio || anioProyecto(p) === a.filtro.anio),
+  );
+  const ids = new Set(enAlcance.map((p) => p.id));
+  const material = new Map<string, number>();
+  for (const m of a.movs) {
+    if (
+      m.tipo !== "Salida" ||
+      m.destinoTipo !== "proyecto" ||
+      !m.destinoId ||
+      !ids.has(m.destinoId)
+    )
+      continue;
+    material.set(
+      m.destinoId,
+      (material.get(m.destinoId) ?? 0) + m.cantidad * (m.costoAlSalir ?? 0),
+    );
+  }
+
+  const total = vacio();
+  const porTipo = new Map<FilaTipoProyecto["tipo"], Acum>();
+  const porSector = new Map<string, Acum & { ids: Set<string> }>();
+  for (const p of enAlcance) {
+    const mat = material.get(p.id) ?? 0;
+    const tipo = porTipo.get(p.tipo ?? "sin_tipo") ?? vacio();
+    const sector = sectorDe.get(p.clienteId) ?? "Sin sector";
+    const sec = porSector.get(sector) ?? { ...vacio(), ids: new Set<string>() };
+    for (const x of [total, tipo, sec]) {
+      x.servicios++;
+      if (typeof p.valorPactado === "number") {
+        x.conValor++;
+        x.ingresos += p.valorPactado;
+        x.margen += p.valorPactado - mat;
+      }
+      x.materiales += mat;
+    }
+    sec.ids.add(p.clienteId);
+    porTipo.set(p.tipo ?? "sin_tipo", tipo);
+    porSector.set(sector, sec);
+  }
+  const anios = [
+    ...new Set(
+      a.proyectos
+        .filter((p) => incluyeProyecto(a.filtro.estado, p))
+        .map(anioProyecto)
+        .filter(Boolean),
+    ),
+  ].sort((x, y) => y.localeCompare(x));
+  return {
+    ...proyectosDe(total),
+    sinValor: total.servicios - total.conValor,
+    anios,
+    porTipo: [...porTipo.entries()]
+      .map(([tipo, x]) => ({
+        tipo,
+        ...proyectosDe(x),
+        pctIngresos: total.ingresos > 0 ? (x.ingresos / total.ingresos) * 100 : 0,
+      }))
+      // «Sin tipo» siempre al final; el resto por ingresos
+      .sort(
+        (p, q) =>
+          Number(p.tipo === "sin_tipo") - Number(q.tipo === "sin_tipo") ||
+          q.ingresos - p.ingresos ||
+          q.proyectos - p.proyectos,
+      ),
+    porSector: [...porSector.entries()]
+      .map(([sector, x]) => ({
+        sector,
+        clientes: x.ids.size,
+        ...proyectosDe(x),
+        pctProyectos: total.servicios > 0 ? (x.servicios / total.servicios) * 100 : 0,
+        pctIngresos: total.ingresos > 0 ? (x.ingresos / total.ingresos) * 100 : 0,
+      }))
+      .sort((p, q) => q.proyectos - p.proyectos || q.ingresos - p.ingresos),
   };
 }

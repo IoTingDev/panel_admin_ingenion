@@ -2,6 +2,7 @@ export type Estado = "activo" | "suspendido" | "baja";
 export type RolUsuario = "administrador" | "operador" | "lectura";
 export type EstadoProyecto = "en_desarrollo" | "activo" | "pausado" | "finalizado" | "baja";
 export type TipoCliente = "persona" | "empresa";
+export type TipoProyecto = "software" | "iot" | "monitoreo" | "automatizacion";
 export type TipoTrabajo = "cctv" | "alarmas" | "telecom" | "mantenimiento" | "instalacion" | "otro";
 export type EstadoTrabajo = "programado" | "en_curso" | "completado" | "cancelado";
 export type EstadoItem = "Disponible" | "En uso" | "En reparación" | "Dañado" | "Baja";
@@ -55,6 +56,10 @@ export interface Proyecto {
   etiquetas?: string[] | undefined;
   /** Momento técnico del registro; `fechaInicio` es la fecha real que indica la persona. */
   registradoEn?: string | undefined;
+  /** COP, informativo (como en los servicios técnicos): la facturación vive en Alegra. */
+  valorPactado?: number | undefined;
+  /** Clasificación opcional del proyecto (panel v4.2). */
+  tipo?: TipoProyecto | undefined;
   esDemo?: boolean | undefined;
 }
 

@@ -65,3 +65,8 @@ export function fmtCop(n: number): string {
 export function capitalizar(s: string): string {
   return s ? s.charAt(0).toLocaleUpperCase("es") + s.slice(1) : s;
 }
+
+/** Porcentaje con un decimal y coma: 53,6 %. */
+export function fmtPct(n: number): string {
+  return `${new Intl.NumberFormat("es-CO", { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(n)} %`;
+}

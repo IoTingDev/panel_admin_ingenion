@@ -258,6 +258,60 @@ export function ejecutarSuiteContrato(
     });
 
     describe("proyectos y servicios técnicos (contrato §5.3, §5.5)", () => {
+      it("proyecto: el valor pactado (COP entero ≥ 0, informativo) se guarda, se lee y se valida", async () => {
+        const c = await clienteActivo();
+        const p = await api.proyectos.create({
+          clienteId: c.id,
+          nombre: "Proyecto con valor pactado",
+          estado: "en_desarrollo",
+          valorPactado: 8_500_000,
+        });
+        expect((await api.proyectos.get(p.id))?.valorPactado).toBe(8_500_000);
+        expect((await api.proyectos.list()).find((x) => x.id === p.id)?.valorPactado).toBe(
+          8_500_000,
+        );
+        await expect(
+          api.proyectos.create({
+            clienteId: c.id,
+            nombre: "Negativo",
+            estado: "activo",
+            valorPactado: -1,
+          }),
+        ).rejects.toThrow(/valor pactado/i);
+        await expect(api.proyectos.update(p.id, { valorPactado: 10.5 })).rejects.toThrow(
+          /valor pactado/i,
+        );
+        expect((await api.proyectos.update(p.id, { valorPactado: 9_000_000 })).valorPactado).toBe(
+          9_000_000,
+        );
+      });
+
+      it("proyecto: el tipo es opcional y solo admite software, iot, monitoreo o automatizacion", async () => {
+        const c = await clienteActivo();
+        const sin = await api.proyectos.create({
+          clienteId: c.id,
+          nombre: "Sin tipo",
+          estado: "activo",
+        });
+        expect(sin.tipo).toBeUndefined();
+        const con = await api.proyectos.create({
+          clienteId: c.id,
+          nombre: "Con tipo",
+          estado: "activo",
+          tipo: "iot",
+        });
+        expect((await api.proyectos.get(con.id))?.tipo).toBe("iot");
+        await expect(
+          api.proyectos.create({
+            clienteId: c.id,
+            nombre: "Inventado",
+            estado: "activo",
+            tipo: "hardware" as never,
+          }),
+        ).rejects.toThrow(/tipo de proyecto/i);
+        expect((await api.proyectos.update(con.id, { tipo: "software" })).tipo).toBe("software");
+      });
+
       it("las fechas son reales: pasado permitido, fin ≥ inicio, y el cliente debe estar activo", async () => {
         const c = await clienteActivo();
         const p = await api.proyectos.create({

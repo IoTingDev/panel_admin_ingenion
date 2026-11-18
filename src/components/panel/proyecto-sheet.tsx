@@ -2,9 +2,14 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { api, type Proyecto } from "@/lib/api";
+import { api, type Proyecto, type TipoProyecto } from "@/lib/api";
 import { useApiMutation, useClientes } from "@/hooks/use-api";
-import { COLUMNAS_PROYECTO, ROTULO_ESTADO_PROYECTO } from "@/lib/dominio";
+import {
+  COLUMNAS_PROYECTO,
+  ROTULO_ESTADO_PROYECTO,
+  ROTULO_TIPO_PROYECTO,
+  TIPOS_PROYECTO,
+} from "@/lib/dominio";
 import { hoyBogota } from "@/lib/inventario";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,8 +29,12 @@ const proyectoSchema = z
     clienteId: z.string().min(1, "Seleccione cliente"),
     descripcion: z.string(),
     estado: z.enum(["en_desarrollo", "activo", "pausado", "finalizado", "baja"]),
+    tipo: z.string(),
     fechaInicio: z.string(),
     fechaFin: z.string(),
+    valorPactado: z.string().refine((v) => v.trim() === "" || /^\d+$/.test(v.trim()), {
+      message: "Solo números enteros en pesos",
+    }),
     responsable: z.string(),
     etiquetas: z.string(),
   })
@@ -53,9 +62,11 @@ export function ProyectoSheet({
       clienteId: proyecto?.clienteId ?? clienteId,
       descripcion: proyecto?.descripcion ?? "",
       estado: proyecto?.estado ?? "en_desarrollo",
+      tipo: proyecto?.tipo ?? "",
       // La fecha real de inicio: por defecto hoy, editable y puede ser pasada.
       fechaInicio: proyecto ? (proyecto.fechaInicio?.slice(0, 10) ?? "") : hoyBogota(),
       fechaFin: proyecto?.fechaFin?.slice(0, 10) ?? "",
+      valorPactado: proyecto?.valorPactado === undefined ? "" : String(proyecto.valorPactado),
       responsable: proyecto?.responsable ?? "",
       etiquetas: proyecto?.etiquetas?.join(", ") ?? "",
     });
@@ -75,6 +86,8 @@ export function ProyectoSheet({
       ...v,
       fechaInicio: v.fechaInicio ? `${v.fechaInicio}T12:00:00-05:00` : undefined,
       fechaFin: v.fechaFin ? `${v.fechaFin}T12:00:00-05:00` : undefined,
+      valorPactado: v.valorPactado.trim() === "" ? undefined : Number(v.valorPactado),
+      tipo: v.tipo === "" ? undefined : (v.tipo as TipoProyecto),
       etiquetas: v.etiquetas
         .split(",")
         .map((s) => s.trim())
@@ -125,6 +138,24 @@ export function ProyectoSheet({
               </div>
             ))}
           </div>
+          <Label htmlFor="p-valor">Valor pactado (COP, informativo)</Label>
+          <Input
+            id="p-valor"
+            type="number"
+            min="0"
+            step="1"
+            placeholder="La facturación vive en Alegra"
+            {...form.register("valorPactado")}
+          />
+          <Label htmlFor="p-tipo">Tipo de proyecto</Label>
+          <select id="p-tipo" className="app-select w-full" {...form.register("tipo")}>
+            <option value="">Sin tipo</option>
+            {TIPOS_PROYECTO.map((tp) => (
+              <option key={tp} value={tp}>
+                {ROTULO_TIPO_PROYECTO[tp]}
+              </option>
+            ))}
+          </select>
           <Label htmlFor="p-estado">Estado</Label>
           <select id="p-estado" className="app-select w-full" {...form.register("estado")}>
             {COLUMNAS_PROYECTO.map((s) => (

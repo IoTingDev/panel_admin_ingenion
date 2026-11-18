@@ -330,3 +330,71 @@ test("Etiquetas — sectores y estados con la primera letra en mayúscula (el va
   await expect(grafico).toContainText("Agroindustrial");
   await expect(grafico).toContainText("Otro");
 });
+
+test("Proyectos — valor pactado y tipo se registran en el formulario, se ven en el detalle y entran en SU pantalla de ingresos", async ({
+  page,
+}) => {
+  await entrar(page);
+  await page.goto("/proyectos");
+  await page
+    .getByRole("button", { name: /Nuevo proyecto/ })
+    .first()
+    .click();
+  await page.getByLabel("Nombre", { exact: true }).fill("Proyecto de prueba con valor");
+  await page.locator("#p-cliente").selectOption({ index: 1 });
+  await page.getByLabel("Valor pactado (COP, informativo)").fill("8500000");
+  const tipos = await page.locator("#p-tipo option").allTextContents();
+  expect(tipos).toEqual(["Sin tipo", "Software", "IoT", "Monitoreo", "Automatización"]);
+  await page.locator("#p-tipo").selectOption("monitoreo");
+  await page
+    .getByRole("button", { name: /Guardar|Crear/ })
+    .last()
+    .click();
+  await expect(page.locator("body")).toContainText("Proyecto guardado");
+  const db = await leerDb(page);
+  const nuevo = (
+    db.proyectos as unknown as {
+      id: string;
+      nombre: string;
+      valorPactado?: number;
+      tipo?: string;
+    }[]
+  ).find((p) => p.nombre === "Proyecto de prueba con valor");
+  expect(nuevo?.valorPactado).toBe(8_500_000);
+  expect(nuevo?.tipo).toBe("monitoreo");
+  await page.goto(`/proyectos/${nuevo?.id}`);
+  await expect(page.getByTestId("valor-pactado-proyecto")).toContainText(pesos(8_500_000));
+  await expect(page.getByTestId("tipo-proyecto")).toHaveText("Monitoreo");
+  // la pantalla de ingresos de proyectos (desde el botón de Proyectos I+D+I)
+  await page.goto("/proyectos");
+  await page.getByRole("link", { name: "Ingresos" }).click();
+  await expect(page.getByRole("heading", { name: "Ingresos por proyectos" })).toBeVisible();
+  await page.getByLabel("Estado de los proyectos").selectOption("vigentes");
+  const fila = page.getByTestId("tipo-proyecto-monitoreo");
+  await expect(fila).toContainText(pesos(8_500_000));
+  await expect(page.getByTestId("ingresos-proyectos-por-sector")).toBeVisible();
+  await expect(page.getByTestId("nota-ingresos-proyectos")).toContainText("Alegra");
+  // los proyectos sin tipo se agrupan aparte, al final
+  const ultimo = page.getByTestId("ingresos-proyectos-por-tipo").locator("tbody tr").last();
+  await expect(ultimo).toHaveAttribute("data-testid", "tipo-proyecto-sin_tipo");
+});
+
+test("Ingresos — las dos pantallas están separadas: servicios en Servicios técnicos y proyectos en Proyectos I+D+I", async ({
+  page,
+}) => {
+  await entrar(page);
+  await page.goto("/servicios-tecnicos/ingresos");
+  await expect(page.getByRole("heading", { name: "Ingresos por servicios" })).toBeVisible();
+  await expect(page.getByTestId("ingresos-por-tipo")).toBeVisible();
+  await expect(page.getByTestId("ingresos-por-sector")).toBeVisible();
+  await expect(page.getByTestId("ingresos-proyectos-por-tipo")).toHaveCount(0);
+  await expect(page.locator("main")).not.toContainText("Valor pactado de los proyectos");
+  await page.goto("/proyectos/ingresos");
+  await expect(page.getByRole("heading", { name: "Ingresos por proyectos" })).toBeVisible();
+  await expect(page.getByTestId("ingresos-proyectos-por-tipo")).toBeVisible();
+  await expect(page.getByTestId("ingresos-proyectos-por-sector")).toBeVisible();
+  await expect(page.getByTestId("ingresos-por-tipo")).toHaveCount(0);
+  // cada pantalla enlaza de vuelta a su lista
+  await page.getByRole("link", { name: "Proyectos I+D+I" }).first().click();
+  await expect(page).toHaveURL(/\/proyectos$/);
+});

@@ -3,28 +3,18 @@ import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Banknote, Receipt, Wrench, Boxes } from "lucide-react";
 import { useClientes, useMovimientos, useTrabajos } from "@/hooks/use-api";
 import { ROTULO_TIPO_TRABAJO } from "@/lib/dominio";
-import { capitalizar, fmtCop } from "@/lib/format";
+import { capitalizar, fmtCop, fmtPct } from "@/lib/format";
 import { resumenIngresos, type EstadoIngresos } from "@/lib/ingresos";
 import { Button } from "@/components/ui/button";
 import { PageHeader, StatCard } from "./common";
 import { Loading } from "./data-tools";
-
-const fmtPct = (n: number) =>
-  `${new Intl.NumberFormat("es-CO", { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(n)} %`;
+import { BarraPorcentaje as Barra } from "./barra-porcentaje";
 
 const ESTADOS: { value: EstadoIngresos; label: string }[] = [
   { value: "completados", label: "Servicios completados" },
   { value: "pendientes", label: "Programados y en curso (por cobrar)" },
   { value: "todos", label: "Todos menos cancelados" },
 ];
-
-function Barra({ pct, color }: { pct: number; color: string }) {
-  return (
-    <div className="h-2 min-w-24 overflow-hidden rounded-full bg-muted">
-      <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
-    </div>
-  );
-}
 
 /**
  * «Ingresos por servicios»: ingresos y servicios por tipo de trabajo y por sector del cliente, para ver qué

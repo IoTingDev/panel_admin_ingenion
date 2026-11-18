@@ -2,6 +2,7 @@ import type {
   EstadoProyecto,
   EstadoTrabajo,
   TipoCliente,
+  TipoProyecto,
   TipoTrabajo,
   TrabajoTecnico,
 } from "@/lib/api/types";
@@ -102,6 +103,15 @@ export function compararServicios(
 
 /** Estados de un cliente o de un usuario del portal, tal como se guardan (se muestran capitalizados). */
 export const ESTADOS_CLIENTE = ["activo", "suspendido", "baja"] as const;
+
+/** Tipos de proyecto I+D+I (panel v4.2). Opcional: un proyecto sin tipo es válido. */
+export const TIPOS_PROYECTO: TipoProyecto[] = ["software", "iot", "monitoreo", "automatizacion"];
+export const ROTULO_TIPO_PROYECTO: Record<TipoProyecto, string> = {
+  software: "Software",
+  iot: "IoT",
+  monitoreo: "Monitoreo",
+  automatizacion: "Automatización",
+};
 
 /** Roles de un usuario del portal del cliente, tal como se guardan (se muestran capitalizados). */
 export const ROLES_USUARIO = ["administrador", "operador", "lectura"] as const;
