@@ -1,5 +1,5 @@
 // Conversión entre el formulario de cobro (texto) y los campos de la API (ADR-0047).
-import type { Cuota, ModalidadSuscripcion } from "@/lib/api/types";
+import type { Cuota, EstadoTrabajo, ModalidadSuscripcion } from "@/lib/api/types";
 import { minutosDeHoras } from "@/lib/desglose";
 import { generarPlan } from "@/lib/pagos";
 import { hoyBogota } from "@/lib/inventario";
@@ -143,3 +143,11 @@ export function ingresoRecurrente(items: readonly SuscripcionActiva[]): {
   }
   return { activas, mensual, anual };
 }
+
+/**
+ * Un servicio técnico por suscripción sigue corriendo aunque figure «completado» (el trabajo inicial se entregó,
+ * la mensualidad o anualidad continúa): cuenta como activo en curso y completado; programado (aún no empieza) y
+ * cancelado, no.
+ */
+export const servicioSuscripcionActiva = (estado: EstadoTrabajo): boolean =>
+  estado === "en_curso" || estado === "completado";

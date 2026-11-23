@@ -197,3 +197,24 @@ export function errorCamposItem(
     return "Cantidad inicial inválida (entero ≥ 0).";
   return "";
 }
+
+/**
+ * Conteo para «Unidades en stock»: los gramos cuentan 1000 g = 1 unidad (un rollo de filamento no son mil
+ * componentes); cualquier otra unidad cuenta tal cual. Es solo para la tarjeta: el stock real sigue en gramos.
+ */
+export const unidadesParaConteo = (stock: number, unidad: string): number =>
+  unidad === "g" ? stock / 1000 : stock;
+
+/** Suma de unidades para el conteo de la tarjeta, y si algún ítem se contó en gramos (para avisarlo). */
+export function conteoUnidades(
+  items: readonly { sku: string; unidad: string }[],
+  stocks: ReadonlyMap<string, number>,
+): { total: number; hayGramos: boolean } {
+  let total = 0;
+  let hayGramos = false;
+  for (const i of items) {
+    total += unidadesParaConteo(stocks.get(i.sku) ?? 0, i.unidad);
+    if (i.unidad === "g") hayGramos = true;
+  }
+  return { total, hayGramos };
+}

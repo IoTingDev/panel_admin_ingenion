@@ -246,3 +246,14 @@ function Fila({
     </div>
   );
 }
+
+/** Aviso breve en las listas: cuánto hay vencido sin pagar en el plan de cuotas (nada si no hay). */
+export function AvisoVencido({ plan }: { plan: readonly Cuota[] | undefined }) {
+  const vencido = resumenPagos(plan ?? [], hoyBogota()).vencido;
+  if (vencido <= 0) return null;
+  return (
+    <p className="mt-1 text-xs text-destructive" data-testid="vencido-lista">
+      Cuotas vencidas: {fmtCop(vencido)}
+    </p>
+  );
+}

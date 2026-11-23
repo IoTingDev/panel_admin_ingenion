@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Banknote, Receipt, Repeat, Wrench, Boxes } from "lucide-react";
-import { ingresoRecurrente } from "@/lib/cobro";
+import { ingresoRecurrente, servicioSuscripcionActiva } from "@/lib/cobro";
 import { useClientes, useMovimientos, useTrabajos } from "@/hooks/use-api";
 import { ROTULO_TIPO_TRABAJO } from "@/lib/dominio";
 import { capitalizar, fmtCop, fmtPct } from "@/lib/format";
@@ -28,7 +28,9 @@ export function IngresosView() {
   const { data: movs = [] } = useMovimientos();
   const [estado, setEstado] = useState<EstadoIngresos>("completados");
   const [anio, setAnio] = useState("");
-  const rec = ingresoRecurrente(trabajos.map((t) => ({ ...t, activa: t.estado === "en_curso" })));
+  const rec = ingresoRecurrente(
+    trabajos.map((t) => ({ ...t, activa: servicioSuscripcionActiva(t.estado) })),
+  );
   const r = useMemo(
     () => resumenIngresos({ trabajos, clientes, movs, filtro: { estado, anio } }),
     [trabajos, clientes, movs, estado, anio],

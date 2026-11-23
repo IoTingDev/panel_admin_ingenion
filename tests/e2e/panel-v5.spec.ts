@@ -335,3 +335,72 @@ test("Inventario — un rollo de filamento se registra en gramos y una salida de
   await d2.getByLabel("Cantidad", { exact: true }).fill("956");
   await expect(d2).toContainText("hay 955 g");
 });
+
+test("Servicios técnicos — un servicio completado por suscripción muestra «Mensualidad activa» y las cuotas vencidas en la lista", async ({
+  page,
+}) => {
+  await entrar(page);
+  await page.goto("/servicios-tecnicos");
+  const crear = async (titulo: string, estado: string, extra: () => Promise<void>) => {
+    await page.getByRole("button", { name: "Nuevo servicio técnico" }).click();
+    const hoja = page.getByRole("dialog");
+    await hoja.getByLabel("Cliente").selectOption({ index: 1 });
+    await hoja.getByLabel("Tipo", { exact: true }).selectOption("mantenimiento");
+    await hoja.getByLabel("Título").fill(titulo);
+    await hoja.getByLabel("Estado", { exact: true }).selectOption(estado);
+    await extra();
+    await hoja.getByRole("button", { name: "Guardar servicio técnico" }).click();
+    await expect(hoja).toBeHidden();
+  };
+  const dlg = () => page.getByRole("dialog");
+  await crear("Soporte mensual completado", "completado", async () => {
+    await dlg().locator("#t-modalidad").selectOption("mensual");
+    await dlg().locator("#t-recurrente").fill("200000");
+  });
+  await crear("Soporte mensual programado", "programado", async () => {
+    await dlg().locator("#t-modalidad").selectOption("mensual");
+    await dlg().locator("#t-recurrente").fill("200000");
+  });
+  await crear("Con cuotas vencidas", "completado", async () => {
+    await dlg().getByLabel("Valor pactado (COP, informativo)").fill("600000");
+    await dlg().locator("#t-ncuotas").fill("2");
+    await dlg().locator("#t-primera").fill("2026-01-05");
+  });
+  const fila = (t: string) => page.getByRole("row", { name: new RegExp(t) });
+  await expect(fila("Soporte mensual completado").getByTestId("suscripcion-lista")).toHaveText(
+    "Mensualidad activa",
+  );
+  await expect(fila("Soporte mensual programado").getByTestId("suscripcion-lista")).toHaveCount(0);
+  await expect(fila("Con cuotas vencidas").getByTestId("vencido-lista")).toContainText(
+    pesos(600_000),
+  );
+  await expect(fila("Soporte mensual completado").getByTestId("vencido-lista")).toHaveCount(0);
+});
+
+test("Inventario — «Unidades en stock» cuenta 1000 g como 1 unidad, en el Inicio y en la página de inventario", async ({
+  page,
+}) => {
+  await entrar(page);
+  const leer = async (url: string) => {
+    await page.goto(url);
+    const tarjeta = page.getByText("Unidades en stock", { exact: true }).locator("xpath=..");
+    const txt = await tarjeta.innerText();
+    const m = txt.match(/unidades en stock\s*([\d.,]+)/i);
+    return Number((m?.[1] ?? "NaN").replace(/\./g, "").replace(",", "."));
+  };
+  const antesInicio = await leer("/");
+  const antesInv = await leer("/inventario");
+  expect(Number.isFinite(antesInicio) && Number.isFinite(antesInv)).toBe(true);
+  await page.goto("/inventario");
+  await page.getByRole("button", { name: "Nuevo ítem" }).click();
+  const hoja = page.getByRole("dialog");
+  await hoja.getByLabel("Subcategoría").fill("Filamento");
+  await hoja.getByLabel("Descripción").fill("Filamento conteo E2E");
+  await hoja.locator("#n-unidad").selectOption("g");
+  await hoja.getByLabel("Cantidad inicial").fill("1000");
+  await hoja.getByRole("button", { name: "Crear ítem" }).click();
+  await expect(hoja).toBeHidden();
+  const despuesInicio = await leer("/");
+  expect(despuesInicio - antesInicio).toBeCloseTo(1, 5); // 1000 g = 1 unidad, no 1000
+  await expect(page.locator("main")).toContainText("Los gramos cuentan 1000 g = 1 unidad");
+});

@@ -12,8 +12,8 @@ import {
   Wrench,
 } from "lucide-react";
 import { api, type Cuota, type EstadoTrabajo, type TrabajoTecnico } from "@/lib/api";
-import { rotuloSuscripcion } from "@/lib/cobro";
-import { CobroResumen } from "./cobro-resumen";
+import { rotuloSuscripcion, servicioSuscripcionActiva } from "@/lib/cobro";
+import { AvisoVencido, CobroResumen } from "./cobro-resumen";
 import {
   useAuditoria,
   useApiMutation,
@@ -40,14 +40,15 @@ import { TrabajoSheet } from "./trabajo-sheet";
 import { ConfirmDialog, type ConfirmState } from "./confirm-dialog";
 import { useUi } from "./ui-context";
 
-const Estado = ({ t }: { t: Pick<TrabajoTecnico, "estado" | "modalidad"> }) => (
+const Estado = ({ t }: { t: Pick<TrabajoTecnico, "estado" | "modalidad" | "planPagos"> }) => (
   <>
     <StatusBadge estado={t.estado} label={ROTULO_ESTADO_TRABAJO[t.estado]} />
-    {rotuloSuscripcion(t.modalidad, t.estado === "en_curso") && (
+    {rotuloSuscripcion(t.modalidad, servicioSuscripcionActiva(t.estado)) && (
       <p className="mt-1 text-xs text-primary" data-testid="suscripcion-lista">
         {rotuloSuscripcion(t.modalidad, true)}
       </p>
     )}
+    <AvisoVencido plan={t.planPagos} />
   </>
 );
 
@@ -428,7 +429,7 @@ export function TrabajoDetail({ id }: { id: string }) {
           <CobroResumen
             cobro={t}
             materiales={material.costoTotal}
-            suscripcionActiva={t.estado === "en_curso"}
+            suscripcionActiva={servicioSuscripcionActiva(t.estado)}
             onGuardarPlan={(plan) => guardarPlan.mutate(plan)}
             guardando={guardarPlan.isPending}
           />
