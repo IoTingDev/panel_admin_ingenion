@@ -7,6 +7,9 @@ import {
   ROTULO_TIPO_TRABAJO,
   TIPOS_TRABAJO,
 } from "@/lib/dominio";
+import { limpiando } from "@/lib/dominio";
+import { CobroCampos } from "./cobro-campos";
+import { cobroAData, cobroDeEntidad, cobroVacio, type CobroForm } from "@/lib/cobro";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,7 +22,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 
-interface Borrador {
+interface Borrador extends CobroForm {
   clienteId: string;
   tipo: string;
   titulo: string;
@@ -49,6 +52,7 @@ const vacio = (clienteId = ""): Borrador => ({
   fechaFin: "",
   valorPactado: "",
   notas: "",
+  ...cobroVacio,
 });
 
 const aBorrador = (t: TrabajoTecnico): Borrador => ({
@@ -65,6 +69,7 @@ const aBorrador = (t: TrabajoTecnico): Borrador => ({
   fechaFin: t.fechaFin?.slice(0, 10) ?? "",
   valorPactado: t.valorPactado === undefined ? "" : String(t.valorPactado),
   notas: t.notas ?? "",
+  ...cobroDeEntidad(t),
 });
 
 const opt = (v: string) => (v.trim() === "" ? undefined : v.trim());
@@ -101,10 +106,16 @@ export function TrabajoSheet({
         fechaInicio: opt(v.fechaInicio),
         fechaFin: opt(v.fechaFin),
         valorPactado: v.valorPactado.trim() === "" ? undefined : Number(v.valorPactado),
+        ...cobroAData(
+          v,
+          v.valorPactado.trim() === "" ? undefined : Number(v.valorPactado),
+          trabajo,
+        ),
         notas: opt(v.notas),
       };
+      // Al editar, un campo vaciado viaja como null: es la única forma de limpiarlo por la API.
       return trabajo
-        ? api.trabajos.update(trabajo.id, data)
+        ? api.trabajos.update(trabajo.id, limpiando(data))
         : api.trabajos.create({ ...data, estado: v.estado as NuevoTrabajo["estado"] });
     },
     (t) => `Servicio técnico ${t.codigo} guardado`,
@@ -243,6 +254,7 @@ export function TrabajoSheet({
             value={f.valorPactado}
             onChange={(e) => set("valorPactado", e.target.value)}
           />
+          <CobroCampos prefijo="t" v={f} set={set} valorPactado={f.valorPactado} />
           <Label htmlFor="t-notas">Notas</Label>
           <Textarea id="t-notas" value={f.notas} onChange={(e) => set("notas", e.target.value)} />
           <div className="flex justify-end gap-2 border-t pt-4">

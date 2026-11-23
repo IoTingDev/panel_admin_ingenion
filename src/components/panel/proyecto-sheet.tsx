@@ -11,6 +11,9 @@ import {
   TIPOS_PROYECTO,
 } from "@/lib/dominio";
 import { hoyBogota } from "@/lib/inventario";
+import { limpiando } from "@/lib/dominio";
+import { CobroCampos } from "./cobro-campos";
+import { cobroAData, cobroDeEntidad, type CobroForm } from "@/lib/cobro";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -37,6 +40,13 @@ const proyectoSchema = z
     }),
     responsable: z.string(),
     etiquetas: z.string(),
+    modalidad: z.string(),
+    valorRecurrente: z.string(),
+    inicioSuscripcion: z.string(),
+    horas: z.string(),
+    valorHora: z.string(),
+    nCuotas: z.string(),
+    primeraCuota: z.string(),
   })
   .refine((d) => !d.fechaInicio || !d.fechaFin || d.fechaFin >= d.fechaInicio, {
     message: "La fecha final debe ser posterior al inicio",
@@ -69,6 +79,7 @@ export function ProyectoSheet({
       valorPactado: proyecto?.valorPactado === undefined ? "" : String(proyecto.valorPactado),
       responsable: proyecto?.responsable ?? "",
       etiquetas: proyecto?.etiquetas?.join(", ") ?? "",
+      ...cobroDeEntidad(proyecto),
     });
   }, [open, proyecto, clienteId, form]);
   // Al pasar a «Finalizado» se pide la fecha de fin: por defecto hoy, editable.
@@ -82,18 +93,35 @@ export function ProyectoSheet({
       form.setValue("fechaFin", hoyBogota());
   }, [estadoForm, proyecto, form]);
   const mutation = useApiMutation((v: ProyectoForm) => {
+    const valorPactado = v.valorPactado.trim() === "" ? undefined : Number(v.valorPactado);
+    const cobro = cobroAData(v, valorPactado, proyecto);
+    // Los campos de cobro del formulario son texto: se reemplazan por los convertidos de `cobroAData`.
+    const {
+      horas: _h,
+      nCuotas: _n,
+      primeraCuota: _p,
+      modalidad: _m,
+      valorRecurrente: _vr,
+      inicioSuscripcion: _is,
+      valorHora: _vh,
+      ...resto
+    } = v;
     const data = {
-      ...v,
+      ...resto,
+      ...cobro,
       fechaInicio: v.fechaInicio ? `${v.fechaInicio}T12:00:00-05:00` : undefined,
       fechaFin: v.fechaFin ? `${v.fechaFin}T12:00:00-05:00` : undefined,
-      valorPactado: v.valorPactado.trim() === "" ? undefined : Number(v.valorPactado),
+      valorPactado,
       tipo: v.tipo === "" ? undefined : (v.tipo as TipoProyecto),
       etiquetas: v.etiquetas
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean),
     };
-    return proyecto ? api.proyectos.update(proyecto.id, data) : api.proyectos.create(data);
+    // Al editar, un campo vaciado viaja como null: es la única forma de limpiarlo por la API.
+    return proyecto
+      ? api.proyectos.update(proyecto.id, limpiando(data) as typeof data)
+      : api.proyectos.create(data);
   }, "Proyecto guardado");
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
@@ -146,6 +174,12 @@ export function ProyectoSheet({
             step="1"
             placeholder="La facturación vive en Alegra"
             {...form.register("valorPactado")}
+          />
+          <CobroCampos
+            prefijo="p"
+            v={form.watch() as CobroForm}
+            set={(k, valor) => form.setValue(k, valor, { shouldDirty: true })}
+            valorPactado={form.watch("valorPactado")}
           />
           <Label htmlFor="p-tipo">Tipo de proyecto</Label>
           <select id="p-tipo" className="app-select w-full" {...form.register("tipo")}>

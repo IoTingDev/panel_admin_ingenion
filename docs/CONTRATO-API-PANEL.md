@@ -123,6 +123,7 @@ Convenciones: `id` es un UUID v4 generado por el servidor; fechas con hora en IS
 | `nit`                                                 | string                             | opc.     |                                                                                                                                                                       |
 | `sector`                                              | string                             | sí       | **Debe estar en `Configuracion.sectores`.**                                                                                                                           |
 | `tipoCliente`                                         | `persona` \| `empresa`             | opc.     |                                                                                                                                                                       |
+| `vinculo`                                             | `recurrente` \| `puntual`          | opc.     | **Aditivo, panel v5 (ADR-0047).** Sin valor = sin clasificar. Independiente del `estado`: puntual no es baja ni suspensión. La API rechaza otro valor.                |
 | `direccion`, `ciudad`                                 | string                             | opc.     |                                                                                                                                                                       |
 | `contactoNombre`, `contactoEmail`, `contactoTelefono` | string                             | opc.     | Correo con formato válido.                                                                                                                                            |
 | `estado`                                              | `activo` \| `suspendido` \| `baja` | sí       |                                                                                                                                                                       |
@@ -140,17 +141,23 @@ cambios de modelo** en la v2: solo se amplía la cascada (§5.4).
 
 ### 2.4 Proyecto
 
-| Campo                        | Tipo                                                               | Notas                                                                                                                                             |
-| ---------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`, `clienteId`, `nombre`  | string                                                             | `nombre` obligatorio.                                                                                                                             |
-| `descripcion`, `responsable` | string, opc.                                                       |                                                                                                                                                   |
-| `estado`                     | `en_desarrollo` \| `activo` \| `pausado` \| `finalizado` \| `baja` | Rótulos de la UI: En desarrollo, **En operación** (`activo`), Pausado, Finalizado, Baja. `borrador` **ya no existe**: se migra a `en_desarrollo`. |
-| `fechaInicio`, `fechaFin`    | ISO, opc.                                                          | **Fecha real indicada por la persona**: por defecto hoy, **se permite el pasado**. `fechaFin ≥ fechaInicio`.                                      |
-| `registradoEn`               | ISO                                                                | Momento técnico del registro, **aparte** de `fechaInicio`.                                                                                        |
-| `tipo`                       | `software` \| `iot` \| `monitoreo` \| `automatizacion`, opc.       | **Aditivo, panel v4.2.** Rótulos de la UI: Software, IoT, Monitoreo, Automatización. Sin tipo es válido; la API rechaza otro valor.               |
-| `valorPactado`               | number (COP entero ≥ 0), opc.                                      | **Informativo** (aditivo, panel v4.2), como en los servicios técnicos: la facturación vive en Alegra. La API rechaza negativos y decimales.       |
-| `etiquetas`                  | string[], opc.                                                     |                                                                                                                                                   |
-| `esDemo`                     | boolean, opc.                                                      |                                                                                                                                                   |
+| Campo                        | Tipo                                                               | Notas                                                                                                                                                    |
+| ---------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`, `clienteId`, `nombre`  | string                                                             | `nombre` obligatorio.                                                                                                                                    |
+| `descripcion`, `responsable` | string, opc.                                                       |                                                                                                                                                          |
+| `estado`                     | `en_desarrollo` \| `activo` \| `pausado` \| `finalizado` \| `baja` | Rótulos de la UI: En desarrollo, **En operación** (`activo`), Pausado, Finalizado, Baja. `borrador` **ya no existe**: se migra a `en_desarrollo`.        |
+| `fechaInicio`, `fechaFin`    | ISO, opc.                                                          | **Fecha real indicada por la persona**: por defecto hoy, **se permite el pasado**. `fechaFin ≥ fechaInicio`.                                             |
+| `registradoEn`               | ISO                                                                | Momento técnico del registro, **aparte** de `fechaInicio`.                                                                                               |
+| `tipo`                       | `software` \| `iot` \| `monitoreo` \| `automatizacion`, opc.       | **Aditivo, panel v4.2.** Rótulos de la UI: Software, IoT, Monitoreo, Automatización. Sin tipo es válido; la API rechaza otro valor.                      |
+| `valorPactado`               | number (COP entero ≥ 0), opc.                                      | **Informativo** (aditivo, panel v4.2), como en los servicios técnicos: la facturación vive en Alegra. La API rechaza negativos y decimales.              |
+| `modalidad`                  | `mensual` \| `anual`, opc.                                         | **Aditivo, panel v5 (ADR-0047).** Sin valor = pago único. Con `valorRecurrente` o `inicioSuscripcion` es obligatoria.                                    |
+| `valorRecurrente`            | number (COP entero ≥ 0), opc.                                      | Valor por periodo de la suscripción. Informativo.                                                                                                        |
+| `inicioSuscripcion`          | `AAAA-MM-DD`, opc.                                                 | Inicio de la suscripción.                                                                                                                                |
+| `minutosTrabajo`             | number (entero ≥ 0), opc.                                          | Minutos de trabajo; la interfaz captura horas con decimales. Desarrollo = minutos × `valorHora` / 60 (derivado).                                         |
+| `valorHora`                  | number (COP entero ≥ 0), opc.                                      | Valor por hora de trabajo de este registro.                                                                                                              |
+| `planPagos`                  | `Cuota[]`, opc.                                                    | Cuotas `{numero, vence, valor, pagadaEn?}`. La suma de `valor` debe ser **exactamente** `valorPactado`; la API rechaza lo contrario. `[]` quita el plan. |
+| `etiquetas`                  | string[], opc.                                                     |                                                                                                                                                          |
+| `esDemo`                     | boolean, opc.                                                      |                                                                                                                                                          |
 
 ### 2.5 TrabajoTecnico
 
@@ -161,21 +168,22 @@ cambios de modelo** en la v2: solo se amplía la cascada (§5.4).
 > `/servicios-tecnicos` (la anterior, `/trabajos`, redirige). De igual modo, la UI llama
 > **«Proyectos I+D+I»** a la sección de la entidad `Proyecto` (ruta `/proyectos`).
 
-| Campo                                                             | Tipo                                                                           | Notas                                                                  |
-| ----------------------------------------------------------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
-| `id`                                                              | string                                                                         |                                                                        |
-| `codigo`                                                          | string                                                                         | **`TT-0001`, consecutivo, jamás reutilizado** (el contador solo sube). |
-| `clienteId`                                                       | string                                                                         | El cliente debe existir y estar `activo` al crear.                     |
-| `tipo`                                                            | `cctv` \| `alarmas` \| `telecom` \| `mantenimiento` \| `instalacion` \| `otro` |                                                                        |
-| `titulo`                                                          | string                                                                         | Obligatorio.                                                           |
-| `descripcion`, `sitioDireccion`, `ciudad`, `responsable`, `notas` | string, opc.                                                                   |                                                                        |
-| `estado`                                                          | `programado` \| `en_curso` \| `completado` \| `cancelado`                      |                                                                        |
-| `fechaProgramada`, `fechaInicio`, `fechaFin`                      | `AAAA-MM-DD`, opc.                                                             | Fechas reales, pasado permitido; `fechaFin ≥ fechaInicio`.             |
-| `valorPactado`                                                    | entero COP ≥ 0, opc.                                                           | **Informativo**: la facturación vive en Alegra.                        |
-| `motivoCancelacion`                                               | string, opc.                                                                   | Obligatorio al cancelar.                                               |
-| `bajaPorCliente`                                                  | boolean, opc.                                                                  | `true` si se canceló en cascada por la baja de su cliente.             |
-| `registradoEn`                                                    | ISO                                                                            |                                                                        |
-| `esDemo`                                                          | boolean, opc.                                                                  |                                                                        |
+| Campo                                                                                           | Tipo                                                                           | Notas                                                                  |
+| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| `id`                                                                                            | string                                                                         |                                                                        |
+| `codigo`                                                                                        | string                                                                         | **`TT-0001`, consecutivo, jamás reutilizado** (el contador solo sube). |
+| `clienteId`                                                                                     | string                                                                         | El cliente debe existir y estar `activo` al crear.                     |
+| `tipo`                                                                                          | `cctv` \| `alarmas` \| `telecom` \| `mantenimiento` \| `instalacion` \| `otro` |                                                                        |
+| `titulo`                                                                                        | string                                                                         | Obligatorio.                                                           |
+| `descripcion`, `sitioDireccion`, `ciudad`, `responsable`, `notas`                               | string, opc.                                                                   |                                                                        |
+| `estado`                                                                                        | `programado` \| `en_curso` \| `completado` \| `cancelado`                      |                                                                        |
+| `fechaProgramada`, `fechaInicio`, `fechaFin`                                                    | `AAAA-MM-DD`, opc.                                                             | Fechas reales, pasado permitido; `fechaFin ≥ fechaInicio`.             |
+| `valorPactado`                                                                                  | entero COP ≥ 0, opc.                                                           | **Informativo**: la facturación vive en Alegra.                        |
+| `modalidad`, `valorRecurrente`, `inicioSuscripcion`, `minutosTrabajo`, `valorHora`, `planPagos` | como en Proyecto                                                               | **Aditivos, panel v5 (ADR-0047)**; mismas reglas que en Proyecto.      |
+| `motivoCancelacion`                                                                             | string, opc.                                                                   | Obligatorio al cancelar.                                               |
+| `bajaPorCliente`                                                                                | boolean, opc.                                                                  | `true` si se canceló en cascada por la baja de su cliente.             |
+| `registradoEn`                                                                                  | ISO                                                                            |                                                                        |
+| `esDemo`                                                                                        | boolean, opc.                                                                  |                                                                        |
 
 ### 2.6 ItemInventario
 
@@ -567,3 +575,11 @@ varias, se migra la más reciente.
 - Eliminar o dar de baja sin motivo.
 - Reactivar hijos automáticamente al reactivar un cliente.
 - Tratar el `esDemo` como dato de usuario: es una marca de la semilla.
+
+## Edición parcial: `null` limpia el campo (panel v5)
+
+`update` de **proyectos** y **servicios técnicos** aplica solo los campos que llegan. JSON no transporta
+`undefined`, así que un campo opcional ya guardado solo se puede **vaciar enviando `null`** (por ejemplo,
+`{ "tipo": null }` o `{ "modalidad": null, "valorRecurrente": null }`). Las reglas se aplican sobre el
+resultado: si el campo limpiado dejaría el registro inválido (p. ej. quitar `modalidad` conservando
+`valorRecurrente`), la API lo rechaza y no cambia nada. Los campos no mencionados no cambian.

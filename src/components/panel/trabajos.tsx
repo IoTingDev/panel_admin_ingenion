@@ -11,7 +11,9 @@ import {
   Trash2,
   Wrench,
 } from "lucide-react";
-import { api, type EstadoTrabajo, type TrabajoTecnico } from "@/lib/api";
+import { api, type Cuota, type EstadoTrabajo, type TrabajoTecnico } from "@/lib/api";
+import { rotuloSuscripcion } from "@/lib/cobro";
+import { CobroResumen } from "./cobro-resumen";
 import {
   useAuditoria,
   useApiMutation,
@@ -38,8 +40,15 @@ import { TrabajoSheet } from "./trabajo-sheet";
 import { ConfirmDialog, type ConfirmState } from "./confirm-dialog";
 import { useUi } from "./ui-context";
 
-const Estado = ({ t }: { t: Pick<TrabajoTecnico, "estado"> }) => (
-  <StatusBadge estado={t.estado} label={ROTULO_ESTADO_TRABAJO[t.estado]} />
+const Estado = ({ t }: { t: Pick<TrabajoTecnico, "estado" | "modalidad"> }) => (
+  <>
+    <StatusBadge estado={t.estado} label={ROTULO_ESTADO_TRABAJO[t.estado]} />
+    {rotuloSuscripcion(t.modalidad, t.estado === "en_curso") && (
+      <p className="mt-1 text-xs text-primary" data-testid="suscripcion-lista">
+        {rotuloSuscripcion(t.modalidad, true)}
+      </p>
+    )}
+  </>
 );
 
 /** Mover un servicio técnico de estado: cancelar pide motivo; lo demás es directo. */
@@ -313,6 +322,10 @@ export function TrabajoDetail({ id }: { id: string }) {
     (motivo: string) => api.trabajos.eliminar(id, motivo),
     "Servicio técnico eliminado",
   );
+  const guardarPlan = useApiMutation(
+    (plan: Cuota[]) => api.trabajos.update(id, { planPagos: plan }),
+    "Plan de pagos actualizado",
+  );
   if (isLoading) return <Loading />;
   if (!t) return <EmptyState icon={Wrench} title="Servicio técnico no encontrado" />;
   const cliente = clientes.find((c) => c.id === t.clienteId);
@@ -412,6 +425,13 @@ export function TrabajoDetail({ id }: { id: string }) {
               )}
             </dl>
           </div>
+          <CobroResumen
+            cobro={t}
+            materiales={material.costoTotal}
+            suscripcionActiva={t.estado === "en_curso"}
+            onGuardarPlan={(plan) => guardarPlan.mutate(plan)}
+            guardando={guardarPlan.isPending}
+          />
         </TabsContent>
         <TabsContent value="materiales">
           <div className="flex flex-wrap items-center justify-between gap-3 py-4">

@@ -157,10 +157,23 @@ export function InicioView() {
         </div>
       )}
       <Seccion titulo="Clientes y usuarios">
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Clientes activos"
             value={clientes.filter((x) => x.estado === "activo").length}
+            icon={Building2}
+          />
+          <StatCard
+            label="Clientes recurrentes"
+            value={
+              clientes.filter((x) => x.estado === "activo" && x.vinculo === "recurrente").length
+            }
+            icon={Building2}
+            tone="success"
+          />
+          <StatCard
+            label="Clientes puntuales"
+            value={clientes.filter((x) => x.estado === "activo" && x.vinculo === "puntual").length}
             icon={Building2}
           />
           <StatCard

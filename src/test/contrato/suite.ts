@@ -312,6 +312,106 @@ export function ejecutarSuiteContrato(
         expect((await api.proyectos.update(con.id, { tipo: "software" })).tipo).toBe("software");
       });
 
+      it("v5: el vinculo del cliente es opcional, no cambia el estado y rechaza valores inventados", async () => {
+        const c = await clienteActivo();
+        expect(c.vinculo).toBeUndefined();
+        expect((await api.clientes.update(c.id, { vinculo: "puntual" })).vinculo).toBe("puntual");
+        expect((await api.clientes.get(c.id))?.estado).toBe("activo");
+        await expect(api.clientes.update(c.id, { vinculo: "esporadico" as never })).rejects.toThrow(
+          /vínculo/i,
+        );
+        expect((await api.clientes.get(c.id))?.vinculo).toBe("puntual");
+      });
+
+      it("v5: suscripcion y horas en proyectos y servicios; un null limpia el campo", async () => {
+        const c = await clienteActivo();
+        const p = await api.proyectos.create({
+          clienteId: c.id,
+          nombre: "Suscripcion v5",
+          estado: "activo",
+          valorPactado: 1_000_000,
+          modalidad: "mensual",
+          valorRecurrente: 450_000,
+          inicioSuscripcion: "2026-12-01",
+          minutosTrabajo: 150,
+          valorHora: 80_000,
+        });
+        const g = await api.proyectos.get(p.id);
+        expect(g?.modalidad).toBe("mensual");
+        expect(g?.minutosTrabajo).toBe(150);
+        expect(g?.valorHora).toBe(80_000);
+        await expect(api.proyectos.update(p.id, { modalidad: null } as never)).rejects.toThrow(
+          /modalidad/i,
+        );
+        await api.proyectos.update(p.id, {
+          modalidad: null,
+          valorRecurrente: null,
+          inicioSuscripcion: null,
+          valorHora: null,
+        } as never);
+        const l = await api.proyectos.get(p.id);
+        expect(l?.modalidad).toBeUndefined();
+        expect(l?.valorRecurrente).toBeUndefined();
+        expect(l?.valorHora).toBeUndefined();
+        expect(l?.valorPactado).toBe(1_000_000);
+        const t = await api.trabajos.create({
+          clienteId: c.id,
+          tipo: "cctv",
+          titulo: "Mantenimiento anual v5",
+          modalidad: "anual",
+          valorRecurrente: 1_200_000,
+          minutosTrabajo: 240,
+          valorHora: 60_000,
+        });
+        expect((await api.trabajos.get(t.id))?.modalidad).toBe("anual");
+        await expect(
+          api.trabajos.create({ clienteId: c.id, tipo: "cctv", titulo: "Mal", valorRecurrente: 5 }),
+        ).rejects.toThrow(/modalidad/i);
+      });
+
+      it("v5: el plan de pagos suma exactamente el valor pactado y se conserva al marcar una cuota", async () => {
+        const c = await clienteActivo();
+        const plan = [
+          { numero: 1, vence: "2026-12-05", valor: 3_000_000 },
+          { numero: 2, vence: "2027-01-05", valor: 5_500_000 },
+        ];
+        const p = await api.proyectos.create({
+          clienteId: c.id,
+          nombre: "En cuotas v5",
+          estado: "activo",
+          valorPactado: 8_500_000,
+          planPagos: plan,
+        });
+        expect((await api.proyectos.get(p.id))?.planPagos).toEqual(plan);
+        await expect(
+          api.proyectos.update(p.id, {
+            planPagos: [{ numero: 1, vence: "2026-12-05", valor: 8_000_000 }],
+          }),
+        ).rejects.toThrow(/deben coincidir/i);
+        await expect(api.proyectos.update(p.id, { valorPactado: 9_000_000 })).rejects.toThrow(
+          /deben coincidir/i,
+        );
+        expect((await api.proyectos.get(p.id))?.valorPactado).toBe(8_500_000);
+        const pagada = plan.map((q, i) => (i === 0 ? { ...q, pagadaEn: "2026-12-04" } : q));
+        expect(
+          (await api.proyectos.update(p.id, { planPagos: pagada })).planPagos?.[0]?.pagadaEn,
+        ).toBe("2026-12-04");
+        expect((await api.proyectos.update(p.id, { planPagos: [] })).planPagos ?? []).toHaveLength(
+          0,
+        );
+        const t = await api.trabajos.create({
+          clienteId: c.id,
+          tipo: "cctv",
+          titulo: "Servicio en cuotas v5",
+          valorPactado: 1_000_000,
+          planPagos: [
+            { numero: 1, vence: "2026-12-01", valor: 600_000 },
+            { numero: 2, vence: "2027-01-01", valor: 400_000 },
+          ],
+        });
+        expect((await api.trabajos.get(t.id))?.planPagos).toHaveLength(2);
+      });
+
       it("las fechas son reales: pasado permitido, fin ≥ inicio, y el cliente debe estar activo", async () => {
         const c = await clienteActivo();
         const p = await api.proyectos.create({

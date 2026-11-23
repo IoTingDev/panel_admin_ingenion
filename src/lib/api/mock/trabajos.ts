@@ -1,5 +1,12 @@
 import { uid } from "@/lib/format";
-import { ESTADOS_TRABAJO, TIPOS_TRABAJO } from "@/lib/dominio";
+import {
+  ESTADOS_TRABAJO,
+  TIPOS_TRABAJO,
+  aplicarParcial,
+  errorPlanPagos,
+  errorSuscripcionYHoras,
+  fusionarParcial,
+} from "@/lib/dominio";
 import { hoyBogota } from "@/lib/inventario";
 import type { NuevoTrabajo, TrabajoTecnico, TrabajosApi } from "../types";
 import { audit, clone, db, delay, exigirClienteActivo, exigirMotivo, must, persist } from "./store";
@@ -18,6 +25,10 @@ function validar(t: NuevoTrabajo) {
     throw new Error(`Estado de servicio técnico inválido: «${t.estado}».`);
   if (t.valorPactado !== undefined && (!Number.isInteger(t.valorPactado) || t.valorPactado < 0))
     throw new Error("El valor pactado debe ser un entero COP ≥ 0.");
+  const errSus = errorSuscripcionYHoras(t);
+  if (errSus) throw new Error(errSus);
+  const errPlan = errorPlanPagos(t.planPagos, t.valorPactado);
+  if (errPlan) throw new Error(errPlan);
   if (t.fechaInicio && t.fechaFin && dia(t.fechaFin) < dia(t.fechaInicio))
     throw new Error("La fecha de fin no puede ser anterior a la de inicio.");
   return cliente;
@@ -71,12 +82,12 @@ export const trabajosApi: TrabajosApi = {
       d.trabajos.find((x) => x.id === id),
       "Servicio técnico no encontrado",
     );
-    validar({ ...t, ...data });
+    validar(fusionarParcial(t, data));
     const cambios = Object.entries(data).map(
       ([k, v]) =>
         `${k}: ${String((t as unknown as Record<string, unknown>)[k] ?? "—")} → ${String(v ?? "—")}`,
     );
-    Object.assign(t, data);
+    aplicarParcial(t, data);
     audit({
       accion: "trabajo.editar",
       entidad: "trabajo",
