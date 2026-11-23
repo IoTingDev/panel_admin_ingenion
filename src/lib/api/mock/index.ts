@@ -11,8 +11,23 @@ import {
 import { grupoDeCategoria, validarConfigInventario } from "@/lib/config-inventario";
 import { previsualizarValores, promedioPonderado, tieneCompras } from "@/lib/valoracion";
 import { uid } from "@/lib/format";
-import { TIPOS_PROYECTO, VINCULOS_CLIENTE, errorPlanPagos, errorSuscripcionYHoras } from "@/lib/dominio";
-import type { Api, Auditoria, Cliente, Cuota, ItemInventario, NuevoMovimiento, Operador } from "../types";
+import {
+  TIPOS_PROYECTO,
+  VINCULOS_CLIENTE,
+  aplicarParcial,
+  errorPlanPagos,
+  errorSuscripcionYHoras,
+  fusionarParcial,
+} from "@/lib/dominio";
+import type {
+  Api,
+  Auditoria,
+  Cliente,
+  Cuota,
+  ItemInventario,
+  NuevoMovimiento,
+  Operador,
+} from "../types";
 import { ACTOR, type MockDb } from "./seed";
 import {
   SESSION_KEY,
@@ -458,8 +473,8 @@ export const mockApi: Api = {
         db().proyectos.find((x) => x.id === id),
         "Proyecto no encontrado",
       );
-      validarProyecto({ ...p, ...data }, false);
-      Object.assign(p, data);
+      validarProyecto(fusionarParcial(p, data), false);
+      aplicarParcial(p, data);
       audit({
         accion: "proyecto.editar",
         entidad: "proyecto",

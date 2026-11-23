@@ -116,6 +116,35 @@ export const ROTULO_TIPO_PROYECTO: Record<TipoProyecto, string> = {
   automatizacion: "Automatización",
 };
 
+/**
+ * Un valor `null` en un cambio parcial LIMPIA el campo: JSON no transporta `undefined`, así que sin esto un campo
+ * opcional ya guardado no se podría vaciar por la API. Devuelve una copia; no modifica `base`.
+ */
+export function fusionarParcial<T extends object>(base: T, cambios: object): T {
+  const r = { ...base } as Record<string, unknown>;
+  for (const [k, v] of Object.entries(cambios)) {
+    if (v === null) delete r[k];
+    else r[k] = v;
+  }
+  return r as T;
+}
+
+/**
+ * Al EDITAR, un campo vaciado debe viajar como `null` (JSON no transporta `undefined`): convierte los `undefined`
+ * de un objeto de cambios en `null`. Solo para el camino de edición; al crear no se usa.
+ */
+export const limpiando = <T extends object>(o: T): T =>
+  Object.fromEntries(Object.entries(o).map(([k, v]) => [k, v === undefined ? null : v])) as T;
+
+/** Aplica en el sitio un cambio parcial con la misma semántica que `fusionarParcial`. */
+export function aplicarParcial(destino: object, cambios: object): void {
+  const d = destino as Record<string, unknown>;
+  for (const [k, v] of Object.entries(cambios)) {
+    if (v === null) delete d[k];
+    else d[k] = v;
+  }
+}
+
 /** Vínculo del cliente y modalidad de suscripción (ADR-0047). */
 export const VINCULOS_CLIENTE: VinculoCliente[] = ["recurrente", "puntual"];
 export const MODALIDADES: ModalidadSuscripcion[] = ["mensual", "anual"];
@@ -134,18 +163,24 @@ export const ROTULO_MODALIDAD: Record<ModalidadSuscripcion, string> = {
  * valores enteros > 0 y **suma exacta = valor pactado** (la matemática justifica lo digitado).
  * Sin plan (undefined o vacío) es válido. Devuelve el mensaje de error o "".
  */
-export function errorPlanPagos(plan: Cuota[] | undefined, valorPactado: number | undefined): string {
+export function errorPlanPagos(
+  plan: Cuota[] | undefined,
+  valorPactado: number | undefined,
+): string {
   if (plan === undefined || plan.length === 0) return "";
   if (plan.length > 120) return "Un plan admite como máximo 120 cuotas.";
   if (valorPactado === undefined || valorPactado <= 0)
     return "Para registrar un plan de pagos primero indique el valor pactado.";
-  const fechaOk = (f: string) => /^\d{4}-\d{2}-\d{2}$/.test(f) && !Number.isNaN(Date.parse(`${f}T00:00:00Z`));
+  const fechaOk = (f: string) =>
+    /^\d{4}-\d{2}-\d{2}$/.test(f) && !Number.isNaN(Date.parse(`${f}T00:00:00Z`));
   let suma = 0;
   let previa = "";
   for (const [i, c] of plan.entries()) {
     if (c.numero !== i + 1) return `Las cuotas deben numerarse 1..${plan.length} en orden.`;
-    if (!Number.isInteger(c.valor) || c.valor <= 0) return `La cuota ${c.numero} debe ser un entero COP > 0.`;
-    if (!fechaOk(c.vence)) return `La fecha de vencimiento de la cuota ${c.numero} debe ser AAAA-MM-DD.`;
+    if (!Number.isInteger(c.valor) || c.valor <= 0)
+      return `La cuota ${c.numero} debe ser un entero COP > 0.`;
+    if (!fechaOk(c.vence))
+      return `La fecha de vencimiento de la cuota ${c.numero} debe ser AAAA-MM-DD.`;
     if (c.vence < previa) return `La cuota ${c.numero} vence antes que la anterior.`;
     if (c.pagadaEn !== undefined && !fechaOk(c.pagadaEn))
       return `La fecha de pago de la cuota ${c.numero} debe ser AAAA-MM-DD.`;
@@ -169,11 +204,15 @@ export function errorSuscripcionYHoras(p: {
     return `Modalidad inválida: «${p.modalidad}».`;
   const ent = (v: number | undefined) => v === undefined || (Number.isInteger(v) && v >= 0);
   if (!ent(p.valorRecurrente)) return "El valor recurrente debe ser un entero COP ≥ 0.";
-  if (!ent(p.minutosTrabajo)) return "Las horas de trabajo deben ser un número ≥ 0 (se guardan en minutos enteros).";
+  if (!ent(p.minutosTrabajo))
+    return "Las horas de trabajo deben ser un número ≥ 0 (se guardan en minutos enteros).";
   if (!ent(p.valorHora)) return "El valor por hora debe ser un entero COP ≥ 0.";
   if (p.inicioSuscripcion !== undefined && !/^\d{4}-\d{2}-\d{2}/.test(p.inicioSuscripcion))
     return "La fecha de inicio de la suscripción debe ser AAAA-MM-DD.";
-  if (p.modalidad === undefined && (p.valorRecurrente !== undefined || p.inicioSuscripcion !== undefined))
+  if (
+    p.modalidad === undefined &&
+    (p.valorRecurrente !== undefined || p.inicioSuscripcion !== undefined)
+  )
     return "Indique la modalidad (mensual o anual) para registrar un valor recurrente o un inicio de suscripción.";
   return "";
 }

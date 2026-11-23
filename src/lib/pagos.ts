@@ -16,7 +16,8 @@ export function sumarMeses(fecha: string, meses: number): string {
  * última absorbe el residuo, de modo que la suma es EXACTAMENTE el total.
  */
 export function generarPlan(total: number, n: number, primera: string): Cuota[] {
-  if (!Number.isInteger(total) || total <= 0) throw new Error("El valor pactado debe ser un entero COP > 0.");
+  if (!Number.isInteger(total) || total <= 0)
+    throw new Error("El valor pactado debe ser un entero COP > 0.");
   if (!Number.isInteger(n) || n < 1 || n > 120) throw new Error("Las cuotas deben ser de 1 a 120.");
   const base = Math.floor(total / n);
   return Array.from({ length: n }, (_, i) => ({

@@ -5,14 +5,24 @@ import { errorPlanPagos } from "@/lib/dominio";
 
 describe("desglose: todo se deriva de lo digitado", () => {
   it("2,5 h a 80.000 COP/h son 200.000 de desarrollo; con 45.000 de material cuesta 245.000", () => {
-    const d = desglose({ valorPactado: 300_000, materiales: 45_000, minutosTrabajo: minutosDeHoras(2.5), valorHora: 80_000 });
+    const d = desglose({
+      valorPactado: 300_000,
+      materiales: 45_000,
+      minutosTrabajo: minutosDeHoras(2.5),
+      valorHora: 80_000,
+    });
     expect(d.desarrollo).toBe(200_000);
     expect(d.costoTotal).toBe(245_000);
     expect(d.diferencia).toBe(55_000);
     expect(d.sobreMateriales).toBe(255_000);
   });
   it("cobrar por debajo del costo da diferencia negativa", () => {
-    const d = desglose({ valorPactado: 100_000, materiales: 45_000, minutosTrabajo: 120, valorHora: 80_000 });
+    const d = desglose({
+      valorPactado: 100_000,
+      materiales: 45_000,
+      minutosTrabajo: 120,
+      valorHora: 80_000,
+    });
     expect(d.costoTotal).toBe(205_000);
     expect(d.diferencia).toBe(-105_000);
   });
@@ -30,10 +40,14 @@ describe("desglose: todo se deriva de lo digitado", () => {
     }
   });
   it("sin valor pactado la diferencia es null, aunque haya horas", () => {
-    expect(desglose({ materiales: 0, minutosTrabajo: 60, valorHora: 50_000 }).diferencia).toBeNull();
+    expect(
+      desglose({ materiales: 0, minutosTrabajo: 60, valorHora: 50_000 }).diferencia,
+    ).toBeNull();
   });
   it("el redondeo es a peso entero y horas<->minutos son inversas", () => {
-    expect(desglose({ materiales: 0, minutosTrabajo: 20, valorHora: 100_000 }).desarrollo).toBe(33_333);
+    expect(desglose({ materiales: 0, minutosTrabajo: 20, valorHora: 100_000 }).desarrollo).toBe(
+      33_333,
+    );
     expect(minutosDeHoras(1.25)).toBe(75);
     expect(horasDeMinutos(75)).toBe(1.25);
   });
@@ -74,9 +88,18 @@ describe("plan de pagos: la suma es exactamente el valor pactado", () => {
     expect(errorPlanPagos(plan, 1_000)).toMatch(/suman 900.*1000/);
   });
   it("resumen: cobrado, por cobrar y vencido salen de las cuotas", () => {
-    const plan = generarPlan(900, 3, "2026-12-05").map((c, i) => (i === 0 ? { ...c, pagadaEn: "2026-12-04" } : c));
+    const plan = generarPlan(900, 3, "2026-12-05").map((c, i) =>
+      i === 0 ? { ...c, pagadaEn: "2026-12-04" } : c,
+    );
     const r = resumenPagos(plan, "2027-01-20");
-    expect(r).toEqual({ total: 900, cobrado: 300, porCobrar: 600, vencido: 300, pagadas: 1, cuotas: 3 });
+    expect(r).toEqual({
+      total: 900,
+      cobrado: 300,
+      porCobrar: 600,
+      vencido: 300,
+      pagadas: 1,
+      cuotas: 3,
+    });
     expect(r.cobrado + r.porCobrar).toBe(r.total);
   });
 });

@@ -17,12 +17,15 @@ import {
   useClientes,
   useUsuarios,
   useProyectos,
+  useTrabajos,
   useAuditoria,
   useApiMutation,
   useConfiguracion,
 } from "@/hooks/use-api";
 import { capitalizar, fmtFecha, fmtFechaHora } from "@/lib/format";
-import { ESTADOS_CLIENTE } from "@/lib/dominio";
+import { ESTADOS_CLIENTE, ROTULO_VINCULO, VINCULOS_CLIENTE } from "@/lib/dominio";
+import { sugerirPuntual } from "@/lib/vinculo";
+import { hoyBogota } from "@/lib/inventario";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { PageHeader, IconBox, StatusBadge, EmptyState } from "./common";
@@ -45,10 +48,12 @@ export function ClientesView({ nuevo = false }: { nuevo?: boolean }) {
   const { data: clientes = [], isLoading } = useClientes();
   const { data: usuarios = [] } = useUsuarios();
   const { data: proyectos = [] } = useProyectos();
+  const { data: trabajos = [] } = useTrabajos();
   const { data: config } = useConfiguracion();
   const [search, setSearch] = useState("");
   const [estado, setEstado] = useState("");
   const [sector, setSector] = useState("");
+  const [vinculo, setVinculo] = useState("");
   const [sort, setSort] = useState(false);
   const [edit, setEdit] = useState<Cliente | null>(null);
   const [open, setOpen] = useState(nuevo);
@@ -60,6 +65,7 @@ export function ClientesView({ nuevo = false }: { nuevo?: boolean }) {
       (c) =>
         (!estado || c.estado === estado) &&
         (!sector || c.sector === sector) &&
+        (!vinculo || (vinculo === "sin_clasificar" ? !c.vinculo : c.vinculo === vinculo)) &&
         `${c.razonSocial} ${c.nit} ${c.ciudad}`.toLowerCase().includes(search.toLowerCase()),
     )
     .sort((a, b) =>
@@ -68,6 +74,9 @@ export function ClientesView({ nuevo = false }: { nuevo?: boolean }) {
         : a.razonSocial.localeCompare(b.razonSocial),
     );
   const pg = usePagination(rows);
+  const sugerencias = new Set(
+    clientes.filter((c) => sugerirPuntual(c, trabajos, proyectos, hoyBogota())).map((c) => c.id),
+  );
   if (isLoading) return <Loading />;
   return (
     <>
@@ -105,6 +114,15 @@ export function ClientesView({ nuevo = false }: { nuevo?: boolean }) {
           onChange={setSector}
           options={(config?.sectores ?? []).map((s) => ({ value: s, label: capitalizar(s) }))}
         />
+        <FilterSelect
+          label="Todos los vínculos"
+          value={vinculo}
+          onChange={setVinculo}
+          options={[
+            ...VINCULOS_CLIENTE.map((v) => ({ value: v, label: ROTULO_VINCULO[v] })),
+            { value: "sin_clasificar", label: "Sin clasificar" },
+          ]}
+        />
       </div>
       <DataFrame footer={pg.footer}>
         <table className="data-table">
@@ -119,6 +137,7 @@ export function ClientesView({ nuevo = false }: { nuevo?: boolean }) {
               <th>Proyectos</th>
               <th>Servicios</th>
               <th>Estado</th>
+              <th>Vínculo</th>
               <th>Creado</th>
               <th />
             </tr>
@@ -157,6 +176,18 @@ export function ClientesView({ nuevo = false }: { nuevo?: boolean }) {
                 </td>
                 <td>
                   <StatusBadge estado={c.estado} />
+                </td>
+                <td data-testid="vinculo-cliente">
+                  {c.vinculo ? (
+                    ROTULO_VINCULO[c.vinculo]
+                  ) : (
+                    <span className="text-muted-foreground">Sin clasificar</span>
+                  )}
+                  {sugerencias.has(c.id) && (
+                    <p className="text-xs text-muted-foreground" data-testid="sugerencia-puntual">
+                      Sugerido: puntual
+                    </p>
+                  )}
                 </td>
                 <td className="whitespace-nowrap text-muted-foreground">{fmtFecha(c.creadoEn)}</td>
                 <td>
@@ -253,6 +284,10 @@ export function ClienteDetail({ id }: { id: string }) {
         actions={
           <>
             <StatusBadge estado={c.estado} />
+            <StatusBadge
+              estado={c.vinculo ?? "sin_clasificar"}
+              label={c.vinculo ? ROTULO_VINCULO[c.vinculo] : "Sin clasificar"}
+            />
             <Button variant="outline" onClick={() => setEdit(true)}>
               <Pencil />
               Editar

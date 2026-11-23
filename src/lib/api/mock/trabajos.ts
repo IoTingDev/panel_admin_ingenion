@@ -1,5 +1,12 @@
 import { uid } from "@/lib/format";
-import { ESTADOS_TRABAJO, TIPOS_TRABAJO, errorPlanPagos, errorSuscripcionYHoras } from "@/lib/dominio";
+import {
+  ESTADOS_TRABAJO,
+  TIPOS_TRABAJO,
+  aplicarParcial,
+  errorPlanPagos,
+  errorSuscripcionYHoras,
+  fusionarParcial,
+} from "@/lib/dominio";
 import { hoyBogota } from "@/lib/inventario";
 import type { NuevoTrabajo, TrabajoTecnico, TrabajosApi } from "../types";
 import { audit, clone, db, delay, exigirClienteActivo, exigirMotivo, must, persist } from "./store";
@@ -75,12 +82,12 @@ export const trabajosApi: TrabajosApi = {
       d.trabajos.find((x) => x.id === id),
       "Servicio técnico no encontrado",
     );
-    validar({ ...t, ...data });
+    validar(fusionarParcial(t, data));
     const cambios = Object.entries(data).map(
       ([k, v]) =>
         `${k}: ${String((t as unknown as Record<string, unknown>)[k] ?? "—")} → ${String(v ?? "—")}`,
     );
-    Object.assign(t, data);
+    aplicarParcial(t, data);
     audit({
       accion: "trabajo.editar",
       entidad: "trabajo",

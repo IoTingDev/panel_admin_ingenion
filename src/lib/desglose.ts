@@ -33,7 +33,8 @@ export function desglose(e: EntradaDesglose): Desglose {
     desarrollo,
     costoTotal,
     valorPactado: e.valorPactado,
-    diferencia: e.valorPactado !== undefined && costoTotal !== null ? e.valorPactado - costoTotal : null,
+    diferencia:
+      e.valorPactado !== undefined && costoTotal !== null ? e.valorPactado - costoTotal : null,
     sobreMateriales: e.valorPactado !== undefined ? e.valorPactado - e.materiales : null,
   };
 }

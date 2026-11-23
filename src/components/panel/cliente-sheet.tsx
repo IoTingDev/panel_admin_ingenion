@@ -4,7 +4,12 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { api, type Cliente } from "@/lib/api";
 import { useApiMutation, useConfiguracion } from "@/hooks/use-api";
-import { SECTOR_AGROINDUSTRIAL, TIPOS_CLIENTE } from "@/lib/dominio";
+import {
+  ROTULO_VINCULO,
+  SECTOR_AGROINDUSTRIAL,
+  TIPOS_CLIENTE,
+  VINCULOS_CLIENTE,
+} from "@/lib/dominio";
 import { capitalizar } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +28,7 @@ const clienteSchema = z.object({
   nit: z.string(),
   sector: z.string().min(1),
   tipoCliente: z.enum(["empresa", "persona"]),
+  vinculo: z.enum(["", "recurrente", "puntual"]),
   direccion: z.string(),
   ciudad: z.string(),
   contactoNombre: z.string(),
@@ -48,6 +54,7 @@ export function ClienteSheet({
       nit: "",
       sector: SECTOR_AGROINDUSTRIAL,
       tipoCliente: "empresa",
+      vinculo: "",
       direccion: "",
       ciudad: "",
       contactoNombre: "",
@@ -62,6 +69,7 @@ export function ClienteSheet({
       nit: cliente?.nit ?? "",
       sector: cliente?.sector ?? SECTOR_AGROINDUSTRIAL,
       tipoCliente: cliente?.tipoCliente ?? "empresa",
+      vinculo: cliente?.vinculo ?? "",
       direccion: cliente?.direccion ?? "",
       ciudad: cliente?.ciudad ?? "",
       contactoNombre: cliente?.contactoNombre ?? "",
@@ -70,10 +78,10 @@ export function ClienteSheet({
       notas: cliente?.notas ?? "",
     });
   }, [open, cliente, form]);
-  const mutation = useApiMutation(
-    (v: ClienteForm) => (cliente ? api.clientes.update(cliente.id, v) : api.clientes.create(v)),
-    "Cliente guardado",
-  );
+  const mutation = useApiMutation(({ vinculo, ...v }: ClienteForm) => {
+    const datos = { ...v, ...(vinculo ? { vinculo } : {}) };
+    return cliente ? api.clientes.update(cliente.id, datos) : api.clientes.create(datos);
+  }, "Cliente guardado");
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent className="overflow-y-auto sm:max-w-lg">
@@ -140,6 +148,20 @@ export function ClienteSheet({
                 </option>
               ))}
             </select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="vinculo">Vínculo</Label>
+            <select id="vinculo" className="app-select w-full" {...form.register("vinculo")}>
+              {!cliente?.vinculo && <option value="">Sin clasificar</option>}
+              {VINCULOS_CLIENTE.map((v) => (
+                <option key={v} value={v}>
+                  {ROTULO_VINCULO[v]}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Puntual: un trabajo y ya; no es baja ni suspensión, y conserva todo su historial.
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="direccion">Dirección</Label>
