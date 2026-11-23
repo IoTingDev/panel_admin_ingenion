@@ -11,8 +11,8 @@ import {
 import { grupoDeCategoria, validarConfigInventario } from "@/lib/config-inventario";
 import { previsualizarValores, promedioPonderado, tieneCompras } from "@/lib/valoracion";
 import { uid } from "@/lib/format";
-import { TIPOS_PROYECTO } from "@/lib/dominio";
-import type { Api, Auditoria, Cliente, ItemInventario, NuevoMovimiento, Operador } from "../types";
+import { TIPOS_PROYECTO, VINCULOS_CLIENTE, errorPlanPagos, errorSuscripcionYHoras } from "@/lib/dominio";
+import type { Api, Auditoria, Cliente, Cuota, ItemInventario, NuevoMovimiento, Operador } from "../types";
 import { ACTOR, type MockDb } from "./seed";
 import {
   SESSION_KEY,
@@ -54,6 +54,12 @@ function validarProyecto(
     fechaFin?: string | undefined;
     valorPactado?: number | undefined;
     tipo?: string | undefined;
+    modalidad?: string | undefined;
+    valorRecurrente?: number | undefined;
+    inicioSuscripcion?: string | undefined;
+    minutosTrabajo?: number | undefined;
+    valorHora?: number | undefined;
+    planPagos?: Cuota[] | undefined;
   },
   nuevo: boolean,
 ) {
@@ -70,6 +76,15 @@ function validarProyecto(
     throw new Error("El valor pactado debe ser un entero COP ≥ 0.");
   if (p.tipo !== undefined && !(TIPOS_PROYECTO as string[]).includes(p.tipo))
     throw new Error(`Tipo de proyecto inválido: «${p.tipo}».`);
+  const errSus = errorSuscripcionYHoras(p);
+  if (errSus) throw new Error(errSus);
+  const errPlan = errorPlanPagos(p.planPagos, p.valorPactado);
+  if (errPlan) throw new Error(errPlan);
+}
+
+function exigirVinculo(v: string | undefined) {
+  if (v !== undefined && !(VINCULOS_CLIENTE as string[]).includes(v))
+    throw new Error(`Vínculo inválido: «${v}».`);
 }
 
 const existeDestino = (tipo: "proyecto" | "trabajo", id: string) => {
@@ -201,6 +216,7 @@ export const mockApi: Api = {
     async create(data) {
       await delay();
       exigirSector(data.sector);
+      exigirVinculo(data.vinculo);
       const {
         serviciosCompletados: _sc,
         serviciosEnCurso: _se,
@@ -229,6 +245,7 @@ export const mockApi: Api = {
         "Cliente no encontrado",
       );
       if (data.sector !== undefined && data.sector !== c.sector) exigirSector(data.sector);
+      exigirVinculo(data.vinculo);
       // Los derivados de lectura no se escriben nunca.
       const { serviciosCompletados: _sc, serviciosEnCurso: _se, ...propios } = data;
       Object.assign(c, propios);

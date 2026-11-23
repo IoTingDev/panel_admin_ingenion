@@ -1,10 +1,13 @@
 import type {
+  Cuota,
   EstadoProyecto,
   EstadoTrabajo,
+  ModalidadSuscripcion,
   TipoCliente,
   TipoProyecto,
   TipoTrabajo,
   TrabajoTecnico,
+  VinculoCliente,
 } from "@/lib/api/types";
 
 export const ESTADOS_PROYECTO: EstadoProyecto[] = [
@@ -112,6 +115,68 @@ export const ROTULO_TIPO_PROYECTO: Record<TipoProyecto, string> = {
   monitoreo: "Monitoreo",
   automatizacion: "Automatización",
 };
+
+/** Vínculo del cliente y modalidad de suscripción (ADR-0047). */
+export const VINCULOS_CLIENTE: VinculoCliente[] = ["recurrente", "puntual"];
+export const MODALIDADES: ModalidadSuscripcion[] = ["mensual", "anual"];
+
+export const ROTULO_VINCULO: Record<VinculoCliente, string> = {
+  recurrente: "Recurrente",
+  puntual: "Puntual",
+};
+export const ROTULO_MODALIDAD: Record<ModalidadSuscripcion, string> = {
+  mensual: "Mensual",
+  anual: "Anual",
+};
+
+/**
+ * Valida el plan de pagos (ADR-0047): cuotas numeradas 1..n, vencimientos válidos y no decrecientes,
+ * valores enteros > 0 y **suma exacta = valor pactado** (la matemática justifica lo digitado).
+ * Sin plan (undefined o vacío) es válido. Devuelve el mensaje de error o "".
+ */
+export function errorPlanPagos(plan: Cuota[] | undefined, valorPactado: number | undefined): string {
+  if (plan === undefined || plan.length === 0) return "";
+  if (plan.length > 120) return "Un plan admite como máximo 120 cuotas.";
+  if (valorPactado === undefined || valorPactado <= 0)
+    return "Para registrar un plan de pagos primero indique el valor pactado.";
+  const fechaOk = (f: string) => /^\d{4}-\d{2}-\d{2}$/.test(f) && !Number.isNaN(Date.parse(`${f}T00:00:00Z`));
+  let suma = 0;
+  let previa = "";
+  for (const [i, c] of plan.entries()) {
+    if (c.numero !== i + 1) return `Las cuotas deben numerarse 1..${plan.length} en orden.`;
+    if (!Number.isInteger(c.valor) || c.valor <= 0) return `La cuota ${c.numero} debe ser un entero COP > 0.`;
+    if (!fechaOk(c.vence)) return `La fecha de vencimiento de la cuota ${c.numero} debe ser AAAA-MM-DD.`;
+    if (c.vence < previa) return `La cuota ${c.numero} vence antes que la anterior.`;
+    if (c.pagadaEn !== undefined && !fechaOk(c.pagadaEn))
+      return `La fecha de pago de la cuota ${c.numero} debe ser AAAA-MM-DD.`;
+    previa = c.vence;
+    suma += c.valor;
+  }
+  if (suma !== valorPactado)
+    return `Las cuotas suman ${suma} y el valor pactado es ${valorPactado}: deben coincidir (rehaga el plan).`;
+  return "";
+}
+
+/** Valida la suscripción y las horas de un proyecto o servicio. Devuelve el mensaje de error o "". */
+export function errorSuscripcionYHoras(p: {
+  modalidad?: string | undefined;
+  valorRecurrente?: number | undefined;
+  inicioSuscripcion?: string | undefined;
+  minutosTrabajo?: number | undefined;
+  valorHora?: number | undefined;
+}): string {
+  if (p.modalidad !== undefined && !(MODALIDADES as string[]).includes(p.modalidad))
+    return `Modalidad inválida: «${p.modalidad}».`;
+  const ent = (v: number | undefined) => v === undefined || (Number.isInteger(v) && v >= 0);
+  if (!ent(p.valorRecurrente)) return "El valor recurrente debe ser un entero COP ≥ 0.";
+  if (!ent(p.minutosTrabajo)) return "Las horas de trabajo deben ser un número ≥ 0 (se guardan en minutos enteros).";
+  if (!ent(p.valorHora)) return "El valor por hora debe ser un entero COP ≥ 0.";
+  if (p.inicioSuscripcion !== undefined && !/^\d{4}-\d{2}-\d{2}/.test(p.inicioSuscripcion))
+    return "La fecha de inicio de la suscripción debe ser AAAA-MM-DD.";
+  if (p.modalidad === undefined && (p.valorRecurrente !== undefined || p.inicioSuscripcion !== undefined))
+    return "Indique la modalidad (mensual o anual) para registrar un valor recurrente o un inicio de suscripción.";
+  return "";
+}
 
 /** Roles de un usuario del portal del cliente, tal como se guardan (se muestran capitalizados). */
 export const ROLES_USUARIO = ["administrador", "operador", "lectura"] as const;

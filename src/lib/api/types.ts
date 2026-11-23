@@ -3,6 +3,20 @@ export type RolUsuario = "administrador" | "operador" | "lectura";
 export type EstadoProyecto = "en_desarrollo" | "activo" | "pausado" | "finalizado" | "baja";
 export type TipoCliente = "persona" | "empresa";
 export type TipoProyecto = "software" | "iot" | "monitoreo" | "automatizacion";
+/** Vínculo comercial del cliente (ADR-0047). Independiente del estado; sin valor = sin clasificar. */
+export type VinculoCliente = "recurrente" | "puntual";
+/** Una cuota del plan de pagos (ADR-0047): informativa; la facturación vive en Alegra. */
+export interface Cuota {
+  numero: number;
+  /** AAAA-MM-DD */
+  vence: string;
+  /** COP entero > 0 */
+  valor: number;
+  /** AAAA-MM-DD; sin valor = pendiente */
+  pagadaEn?: string | undefined;
+}
+/** Modalidad de pago de un proyecto o servicio (ADR-0047). Sin valor = pago único. */
+export type ModalidadSuscripcion = "mensual" | "anual";
 export type TipoTrabajo = "cctv" | "alarmas" | "telecom" | "mantenimiento" | "instalacion" | "otro";
 export type EstadoTrabajo = "programado" | "en_curso" | "completado" | "cancelado";
 export type EstadoItem = "Disponible" | "En uso" | "En reparación" | "Dañado" | "Baja";
@@ -21,6 +35,8 @@ export interface Cliente {
   contactoTelefono?: string | undefined;
   direccion?: string | undefined;
   tipoCliente?: TipoCliente | undefined;
+  /** Recurrente o puntual; sin valor = sin clasificar (ADR-0047). */
+  vinculo?: VinculoCliente | undefined;
   estado: Estado;
   creadoEn: string;
   notas?: string | undefined;
@@ -60,6 +76,18 @@ export interface Proyecto {
   valorPactado?: number | undefined;
   /** Clasificación opcional del proyecto (panel v4.2). */
   tipo?: TipoProyecto | undefined;
+  /** Suscripción (ADR-0047): mensual o anual; sin valor = pago único. */
+  modalidad?: ModalidadSuscripcion | undefined;
+  /** COP por periodo de la suscripción, informativo. */
+  valorRecurrente?: number | undefined;
+  /** AAAA-MM-DD de inicio de la suscripción. */
+  inicioSuscripcion?: string | undefined;
+  /** Minutos de trabajo (la interfaz captura horas). Desarrollo = minutos × valor por hora / 60. */
+  minutosTrabajo?: number | undefined;
+  /** COP por hora de trabajo de este proyecto. */
+  valorHora?: number | undefined;
+  /** Plan de pagos en cuotas; sin plan = un solo pago. La suma de las cuotas es el valor pactado. */
+  planPagos?: Cuota[] | undefined;
   esDemo?: boolean | undefined;
 }
 
@@ -80,6 +108,12 @@ export interface TrabajoTecnico {
   fechaFin?: string | undefined;
   /** COP, informativo: la facturación vive en Alegra. */
   valorPactado?: number | undefined;
+  modalidad?: ModalidadSuscripcion | undefined;
+  valorRecurrente?: number | undefined;
+  inicioSuscripcion?: string | undefined;
+  minutosTrabajo?: number | undefined;
+  valorHora?: number | undefined;
+  planPagos?: Cuota[] | undefined;
   notas?: string | undefined;
   motivoCancelacion?: string | undefined;
   /** Cancelado en cascada por la baja de su cliente (se puede ofrecer reactivar). */
@@ -247,6 +281,12 @@ export interface NuevoTrabajo {
   fechaInicio?: string | undefined;
   fechaFin?: string | undefined;
   valorPactado?: number | undefined;
+  modalidad?: ModalidadSuscripcion | undefined;
+  valorRecurrente?: number | undefined;
+  inicioSuscripcion?: string | undefined;
+  minutosTrabajo?: number | undefined;
+  valorHora?: number | undefined;
+  planPagos?: Cuota[] | undefined;
   notas?: string | undefined;
 }
 
