@@ -122,7 +122,7 @@ function aplicarMovimiento(data: NuevoMovimiento) {
   if (errCampos) throw new Error(errCampos);
   const stock = stockMap([item], d.movimientos).get(item.sku) ?? 0;
   if (data.tipo === "Salida") {
-    const err = validarSalida(stock, data.cantidad);
+    const err = validarSalida(stock, data.cantidad, item.unidad);
     if (err) throw new Error(err);
   }
   const fecha = normalizarFecha(data.fecha).iso;

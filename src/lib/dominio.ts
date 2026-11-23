@@ -145,6 +145,20 @@ export function aplicarParcial(destino: object, cambios: object): void {
   }
 }
 
+/**
+ * Unidades de medida del inventario. La cantidad es siempre un entero: lo que se consume por fracciones se registra
+ * en una unidad menor (un rollo de filamento de 1 kg = 1000 g, con el valor unitario por gramo).
+ */
+export const UNIDADES_INVENTARIO: { value: string; label: string }[] = [
+  { value: "und", label: "Unidades (und)" },
+  { value: "g", label: "Gramos (g)" },
+  { value: "kg", label: "Kilogramos (kg)" },
+  { value: "m", label: "Metros (m)" },
+  { value: "cm", label: "Centímetros (cm)" },
+  { value: "ml", label: "Mililitros (ml)" },
+  { value: "l", label: "Litros (l)" },
+];
+
 /** Vínculo del cliente y modalidad de suscripción (ADR-0047). */
 export const VINCULOS_CLIENTE: VinculoCliente[] = ["recurrente", "puntual"];
 export const MODALIDADES: ModalidadSuscripcion[] = ["mensual", "anual"];

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { UNIDADES_INVENTARIO } from "@/lib/dominio";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Boxes,
@@ -688,6 +689,26 @@ export function ItemDetail({ sku }: { sku: string }) {
                     </option>
                   ))}
                 </optgroup>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="d-unidad">Unidad de medida</Label>
+            <select
+              id="d-unidad"
+              className="app-select w-full"
+              value={item.unidad}
+              onChange={(e) => upd.mutate({ unidad: e.target.value })}
+            >
+              {[
+                ...UNIDADES_INVENTARIO,
+                ...(UNIDADES_INVENTARIO.some((u) => u.value === item.unidad)
+                  ? []
+                  : [{ value: item.unidad, label: item.unidad }]),
+              ].map((u) => (
+                <option key={u.value} value={u.value}>
+                  {u.label}
+                </option>
               ))}
             </select>
           </div>

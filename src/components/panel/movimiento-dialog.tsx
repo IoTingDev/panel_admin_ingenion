@@ -48,7 +48,8 @@ export function MovimientoDialog() {
   }, [movimiento]);
   const selected = items.find((i) => i.sku === sku);
   const stock = selected ? stockActual(selected, movs) : 0;
-  const error = tipo === "Salida" && selected ? validarSalida(stock, cantidad) : null;
+  const error =
+    tipo === "Salida" && selected ? validarSalida(stock, cantidad, selected.unidad) : null;
   const mutation = useApiMutation(api.inventario.registrarMovimiento, "Movimiento registrado");
   return (
     <Dialog open={!!movimiento} onOpenChange={(o) => !o && closeMovimiento()}>

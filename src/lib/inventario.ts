@@ -87,9 +87,9 @@ export function reservarSku(
 }
 
 /** Valida que una salida no deje stock negativo. Devuelve mensaje de error o null. */
-export function validarSalida(stock: number, cantidad: number): string | null {
+export function validarSalida(stock: number, cantidad: number, unidad = "und"): string | null {
   if (cantidad > stock) {
-    return `Stock insuficiente: hay ${stock} und y se intenta sacar ${cantidad}.`;
+    return `Stock insuficiente: hay ${stock} ${unidad} y se intenta sacar ${cantidad}.`;
   }
   return null;
 }

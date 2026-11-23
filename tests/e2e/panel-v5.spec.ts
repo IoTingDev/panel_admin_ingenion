@@ -277,3 +277,61 @@ test("Ingresos — el ingreso recurrente cuenta solo las suscripciones activas h
   await expect(page.locator("main")).toContainText(pesos(450_000));
   await expect(page.locator("main")).toContainText("1 suscripción(es) activa(s) hoy");
 });
+
+test("Inventario — un rollo de filamento se registra en gramos y una salida de 45 g cuesta 45 × valor por gramo", async ({
+  page,
+}) => {
+  await entrar(page);
+  await page.goto("/inventario");
+  await page.getByRole("button", { name: "Nuevo ítem" }).click();
+  const hoja = page.getByRole("dialog");
+  await hoja.getByLabel("Subcategoría").fill("Filamento");
+  await hoja.getByLabel("Descripción").fill("Filamento PLA E2E 1 kg");
+  const unidades = await hoja.locator("#n-unidad option").allTextContents();
+  expect(unidades).toContain("Gramos (g)");
+  await hoja.locator("#n-unidad").selectOption("g");
+  await hoja.getByLabel("Cantidad inicial").fill("1000");
+  await hoja.getByLabel("Valor unitario (COP)").fill("90");
+  await hoja.getByRole("button", { name: "Crear ítem" }).click();
+  await expect(hoja).toBeHidden();
+  const db = await leerDb(page);
+  const item = (
+    db.items as unknown as {
+      sku: string;
+      descripcion: string;
+      unidad: string;
+      cantidad_inicial: number;
+    }[]
+  ).find((i) => i.descripcion === "Filamento PLA E2E 1 kg");
+  expect(item?.unidad).toBe("g");
+  expect(item?.cantidad_inicial).toBe(1000);
+  // salida de 45 g hacia un proyecto
+  const proyecto = (db.proyectos as unknown as { id: string; estado: string }[]).find(
+    (p) => p.estado !== "baja",
+  )!;
+  await page.goto(`/proyectos/${proyecto.id}`);
+  await page.getByRole("tab", { name: "Materiales de inventario" }).click();
+  const num = (s: string) => Number(s.replace(/\D/g, ""));
+  const antes = num(await page.getByTestId("costo-material-valor").innerText());
+  await page.getByRole("button", { name: /registrar salida para este proyecto/i }).click();
+  const dlg = page.getByRole("dialog");
+  await dlg.getByLabel("Ítem de inventario").fill(item!.sku);
+  await dlg.getByLabel("Cantidad", { exact: true }).fill("45");
+  await dlg.getByRole("button", { name: "Confirmar movimiento" }).click();
+  await expect(dlg).toBeHidden();
+  await expect
+    .poll(async () => num(await page.getByTestId("costo-material-valor").innerText()))
+    .toBe(antes + 45 * 90);
+  // el stock quedó en 955 g, con la unidad en la ficha
+  await page.goto(`/inventario/${item!.sku}`);
+  await expect(page.locator("main")).toContainText("955");
+  await expect(page.locator("#d-unidad")).toHaveValue("g");
+  // pasar de más se rechaza diciendo la unidad real
+  await page.goto(`/proyectos/${proyecto.id}`);
+  await page.getByRole("tab", { name: "Materiales de inventario" }).click();
+  await page.getByRole("button", { name: /registrar salida para este proyecto/i }).click();
+  const d2 = page.getByRole("dialog");
+  await d2.getByLabel("Ítem de inventario").fill(item!.sku);
+  await d2.getByLabel("Cantidad", { exact: true }).fill("956");
+  await expect(d2).toContainText("hay 955 g");
+});

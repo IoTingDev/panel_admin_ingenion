@@ -2,6 +2,7 @@ import { useState } from "react";
 import { api, type GrupoInventario, type ItemInventario } from "@/lib/api";
 import { useApiMutation, useConfiguracion } from "@/hooks/use-api";
 import { siguienteSku } from "@/lib/inventario";
+import { UNIDADES_INVENTARIO } from "@/lib/dominio";
 import { GRUPOS, ROTULO_GRUPO } from "@/lib/config-inventario";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,7 @@ const VACIO = {
   descripcion: "",
   marca_referencia: "",
   cantidad_inicial: 0,
+  unidad: "und",
   ubicacion: "",
   notas: "",
   proveedor: "",
@@ -79,7 +81,7 @@ export function NuevoItemSheet({
               vidaUtilAnios: num(f.vidaUtilAnios),
               grupo,
               categoria: cat,
-              unidad: "und",
+              unidad: f.unidad,
               estado: "Disponible",
               stock_minimo: null,
             });
@@ -134,6 +136,23 @@ export function NuevoItemSheet({
               />
             </div>
           ))}
+          <Label htmlFor="n-unidad">Unidad de medida</Label>
+          <select
+            id="n-unidad"
+            className="app-select w-full"
+            value={f.unidad}
+            onChange={(e) => setF({ ...f, unidad: e.target.value })}
+          >
+            {UNIDADES_INVENTARIO.map((u) => (
+              <option key={u.value} value={u.value}>
+                {u.label}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground">
+            Lo que se gasta por fracciones va en una unidad menor: un rollo de filamento de 1 kg se
+            registra como 1000 g, con el valor unitario por gramo (precio del rollo ÷ 1000).
+          </p>
           <Label htmlFor="n-cant">Cantidad inicial</Label>
           <Input
             id="n-cant"
