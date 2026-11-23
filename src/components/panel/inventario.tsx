@@ -22,13 +22,13 @@ import {
   useProyectos,
   useApiMutation,
 } from "@/hooks/use-api";
-import { stockMap, esStockBajo, siguienteSku } from "@/lib/inventario";
+import { stockMap, esStockBajo, siguienteSku, conteoUnidades } from "@/lib/inventario";
 import { GRUPOS as ORDEN_GRUPOS, ROTULO_GRUPO } from "@/lib/config-inventario";
 import { fmtCop } from "@/lib/format";
 import { ValorInventarioPorTipo } from "./inventario-valor-tipo";
 import { exportInventory, download } from "@/lib/export";
 import { validateCsv, type ImportRow } from "@/lib/import-movements";
-import { fmtFechaHora, fmtNum } from "@/lib/format";
+import { fmtFechaHora, fmtNum, fmtUnidades } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -216,7 +216,12 @@ export function InventarioView() {
         <StatCard label="Referencias" value={delGrupo.length} icon={Boxes} />
         <StatCard
           label="Unidades en stock"
-          value={fmtNum(delGrupo.reduce((s, i) => s + (stocks.get(i.sku) ?? 0), 0))}
+          value={fmtUnidades(conteoUnidades(delGrupo, stocks).total)}
+          hint={
+            conteoUnidades(delGrupo, stocks).hayGramos
+              ? "Los gramos cuentan 1000 g = 1 unidad"
+              : undefined
+          }
           icon={Package}
           tone="info"
         />

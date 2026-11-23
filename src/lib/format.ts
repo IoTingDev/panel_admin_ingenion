@@ -30,6 +30,11 @@ export function fmtNum(n: number): string {
   return new Intl.NumberFormat("es-CO").format(n);
 }
 
+/** Conteo de unidades: entero si lo es; si no, con un decimal (los gramos cuentan 1000 g = 1 unidad). */
+export function fmtUnidades(n: number): string {
+  return new Intl.NumberFormat("es-CO", { maximumFractionDigits: 1 }).format(n);
+}
+
 /** yyyy-mm-dd en zona Bogotá, útil para inputs type=date. */
 export function isoDia(iso: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(new Date(iso));

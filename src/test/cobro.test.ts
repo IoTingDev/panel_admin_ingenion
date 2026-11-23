@@ -89,3 +89,53 @@ describe("formulario de cobro -> API", () => {
     expect(d.inicioSuscripcion).toBeUndefined();
   });
 });
+
+import { servicioSuscripcionActiva } from "@/lib/cobro";
+import { conteoUnidades, unidadesParaConteo } from "@/lib/inventario";
+import { fmtUnidades } from "@/lib/format";
+
+describe("servicio por suscripcion: sigue activo aunque figure completado", () => {
+  it("en curso y completado cuentan; programado y cancelado no", () => {
+    expect(servicioSuscripcionActiva("en_curso")).toBe(true);
+    expect(servicioSuscripcionActiva("completado")).toBe(true);
+    expect(servicioSuscripcionActiva("programado")).toBe(false);
+    expect(servicioSuscripcionActiva("cancelado")).toBe(false);
+    expect(rotuloSuscripcion("mensual", servicioSuscripcionActiva("completado"))).toBe(
+      "Mensualidad activa",
+    );
+    expect(rotuloSuscripcion("mensual", servicioSuscripcionActiva("cancelado"))).toBeNull();
+  });
+});
+
+describe("conteo de unidades en stock: 1000 g = 1 unidad", () => {
+  it("un rollo de 1000 g cuenta 1, no 1000; el resto cuenta tal cual", () => {
+    expect(unidadesParaConteo(1000, "g")).toBe(1);
+    expect(unidadesParaConteo(955, "g")).toBe(0.955);
+    expect(unidadesParaConteo(7, "und")).toBe(7);
+    expect(unidadesParaConteo(1000, "kg")).toBe(1000);
+  });
+  it("la suma mezcla componentes y filamento sin inflarse", () => {
+    const items = [
+      { sku: "A", unidad: "und" },
+      { sku: "B", unidad: "g" },
+      { sku: "C", unidad: "g" },
+    ];
+    const stocks = new Map([
+      ["A", 20],
+      ["B", 1000],
+      ["C", 6000],
+    ]);
+    const r = conteoUnidades(items, stocks);
+    expect(r.total).toBe(27);
+    expect(r.hayGramos).toBe(true);
+    expect(conteoUnidades([{ sku: "A", unidad: "und" }], stocks)).toEqual({
+      total: 20,
+      hayGramos: false,
+    });
+  });
+  it("el formato admite un decimal", () => {
+    expect(fmtUnidades(27)).toBe("27");
+    expect(fmtUnidades(26.955)).toBe("27");
+    expect(fmtUnidades(26.45)).toBe("26,5");
+  });
+});

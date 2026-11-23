@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { api, type Cuota, type Proyecto, type EstadoProyecto } from "@/lib/api";
 import { rotuloSuscripcion } from "@/lib/cobro";
-import { CobroResumen } from "./cobro-resumen";
+import { AvisoVencido, CobroResumen } from "./cobro-resumen";
 import { hoyBogota } from "@/lib/inventario";
 import {
   useProyectos,
@@ -274,6 +274,7 @@ export function ProyectosView({ clienteId = "" }: { clienteId?: string }) {
                         {rotuloSuscripcion(p.modalidad, true)}
                       </p>
                     )}
+                    <AvisoVencido plan={p.planPagos} />
                   </td>
                   <td className="whitespace-nowrap">{fmtFecha(p.fechaInicio)}</td>
                   <td className="whitespace-nowrap" data-testid="fin-proyecto">

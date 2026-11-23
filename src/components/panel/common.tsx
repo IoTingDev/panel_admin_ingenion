@@ -87,7 +87,7 @@ export function StatCard({
   value: ReactNode;
   icon: LucideIcon;
   tone?: Tone;
-  hint?: string;
+  hint?: string | undefined;
 }) {
   return (
     <div className="group relative overflow-hidden rounded-xl border bg-gradient-card p-5 shadow-soft transition-all duration-200 hover:-translate-y-0.5 hover:shadow-elegant">

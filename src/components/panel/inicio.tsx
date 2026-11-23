@@ -37,10 +37,10 @@ import {
   useAuditoria,
   useTrabajos,
 } from "@/hooks/use-api";
-import { stockMap, esStockBajo, hoyBogota } from "@/lib/inventario";
+import { stockMap, esStockBajo, hoyBogota, conteoUnidades } from "@/lib/inventario";
 import { ROTULO_ESTADO_PROYECTO } from "@/lib/dominio";
 import { diasSinRespaldo, hayQueRecordarRespaldo } from "@/lib/respaldo-estado";
-import { capitalizar, fmtNum, fmtFechaHora, isoDia } from "@/lib/format";
+import { capitalizar, fmtNum, fmtUnidades, fmtFechaHora, isoDia } from "@/lib/format";
 import { PageHeader, StatCard, DemoBadge, Panel } from "./common";
 import { API_MODE } from "@/lib/api";
 import { Loading } from "./data-tools";
@@ -273,7 +273,12 @@ export function InicioView() {
           <StatCard label="Referencias de inventario" value={items.length} icon={Boxes} />
           <StatCard
             label="Unidades en stock"
-            value={fmtNum([...stocks.values()].reduce((a, b) => a + b, 0))}
+            value={fmtUnidades(conteoUnidades(items, stocks).total)}
+            hint={
+              conteoUnidades(items, stocks).hayGramos
+                ? "Los gramos cuentan 1000 g = 1 unidad"
+                : undefined
+            }
             icon={Package}
             tone="info"
           />
