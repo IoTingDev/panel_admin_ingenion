@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, Banknote, Boxes, FolderKanban, Receipt } from "lucide-react";
+import { ArrowLeft, Banknote, Boxes, FolderKanban, Receipt, Repeat } from "lucide-react";
+import { ingresoRecurrente } from "@/lib/cobro";
 import { useClientes, useMovimientos, useProyectos } from "@/hooks/use-api";
 import { ROTULO_TIPO_PROYECTO } from "@/lib/dominio";
 import { capitalizar, fmtCop, fmtPct } from "@/lib/format";
@@ -26,6 +27,7 @@ export function IngresosProyectosView() {
   const { data: movs = [] } = useMovimientos();
   const [estado, setEstado] = useState<EstadoIngresosProyectos>("finalizados");
   const [anio, setAnio] = useState("");
+  const rec = ingresoRecurrente(proyectos.map((p) => ({ ...p, activa: p.estado === "activo" })));
   const r = useMemo(
     () => resumenIngresosProyectos({ proyectos, clientes, movs, filtro: { estado, anio } }),
     [proyectos, clientes, movs, estado, anio],
@@ -103,6 +105,12 @@ export function IngresosProyectosView() {
               ? "Salidas de inventario a estos proyectos"
               : "Aún no hay salidas asociadas"
           }
+        />
+        <StatCard
+          label="Ingreso recurrente"
+          value={`${fmtCop(rec.mensual)} / mes`}
+          icon={Repeat}
+          hint={`${rec.activas} suscripción(es) activa(s) hoy · ${fmtCop(rec.anual)} al año`}
         />
       </div>
 

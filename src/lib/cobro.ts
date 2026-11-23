@@ -98,3 +98,48 @@ export function cobroAData(
     planPagos,
   };
 }
+
+/**
+ * Etiqueta de operación bajo suscripción (ADR-0047): «Mensualidad activa» o «Anualidad activa» solo si hay
+ * modalidad Y el proyecto está en operación (o el servicio en curso). Sin suscripción o sin operar, null.
+ */
+export function rotuloSuscripcion(
+  modalidad: ModalidadSuscripcion | undefined,
+  enOperacion: boolean,
+): string | null {
+  if (!modalidad || !enOperacion) return null;
+  return modalidad === "mensual" ? "Mensualidad activa" : "Anualidad activa";
+}
+
+export interface SuscripcionActiva {
+  modalidad?: ModalidadSuscripcion | undefined;
+  valorRecurrente?: number | undefined;
+  /** Proyecto en operación o servicio en curso. */
+  activa: boolean;
+}
+
+/**
+ * Ingreso recurrente de las suscripciones que corren hoy: equivalente mensual y anual. Una mensualidad vale
+ * v al mes y 12v al año; una anualidad, v al año y round(v / 12) al mes. Sin valor recurrente no suma.
+ */
+export function ingresoRecurrente(items: readonly SuscripcionActiva[]): {
+  activas: number;
+  mensual: number;
+  anual: number;
+} {
+  let activas = 0;
+  let mensual = 0;
+  let anual = 0;
+  for (const s of items) {
+    if (!s.activa || !s.modalidad || s.valorRecurrente === undefined) continue;
+    activas++;
+    if (s.modalidad === "mensual") {
+      mensual += s.valorRecurrente;
+      anual += s.valorRecurrente * 12;
+    } else {
+      anual += s.valorRecurrente;
+      mensual += Math.round(s.valorRecurrente / 12);
+    }
+  }
+  return { activas, mensual, anual };
+}

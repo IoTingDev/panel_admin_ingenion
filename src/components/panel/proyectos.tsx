@@ -11,7 +11,9 @@ import {
   Trash2,
   ArrowUpRight,
 } from "lucide-react";
-import { api, type Proyecto, type EstadoProyecto } from "@/lib/api";
+import { api, type Cuota, type Proyecto, type EstadoProyecto } from "@/lib/api";
+import { rotuloSuscripcion } from "@/lib/cobro";
+import { CobroResumen } from "./cobro-resumen";
 import { hoyBogota } from "@/lib/inventario";
 import {
   useProyectos,
@@ -267,6 +269,11 @@ export function ProyectosView({ clienteId = "" }: { clienteId?: string }) {
                   <td>{p.responsable || "—"}</td>
                   <td>
                     <StatusBadge estado={p.estado} label={ROTULO_ESTADO_PROYECTO[p.estado]} />
+                    {rotuloSuscripcion(p.modalidad, p.estado === "activo") && (
+                      <p className="mt-1 text-xs text-primary" data-testid="suscripcion-lista">
+                        {rotuloSuscripcion(p.modalidad, true)}
+                      </p>
+                    )}
                   </td>
                   <td className="whitespace-nowrap">{fmtFecha(p.fechaInicio)}</td>
                   <td className="whitespace-nowrap" data-testid="fin-proyecto">
@@ -296,6 +303,10 @@ export function ProyectoDetail({ id }: { id: string }) {
   const eliminar = useApiMutation(
     (motivo: string) => api.proyectos.eliminar(id, motivo),
     "Proyecto eliminado",
+  );
+  const guardarPlan = useApiMutation(
+    (plan: Cuota[]) => api.proyectos.update(id, { planPagos: plan }),
+    "Plan de pagos actualizado",
   );
   const change = useApiMutation(
     ({ estado, motivo }: { estado: EstadoProyecto; motivo?: string }) =>
@@ -428,6 +439,13 @@ export function ProyectoDetail({ id }: { id: string }) {
               </div>
             </dl>
           </div>
+          <CobroResumen
+            cobro={p}
+            materiales={material.costoTotal}
+            suscripcionActiva={p.estado === "activo"}
+            onGuardarPlan={(plan) => guardarPlan.mutate(plan)}
+            guardando={guardarPlan.isPending}
+          />
         </TabsContent>
         <TabsContent value="materiales">
           <div className="flex flex-wrap items-center justify-between gap-3 py-4">

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, Banknote, Receipt, Wrench, Boxes } from "lucide-react";
+import { ArrowLeft, Banknote, Receipt, Repeat, Wrench, Boxes } from "lucide-react";
+import { ingresoRecurrente } from "@/lib/cobro";
 import { useClientes, useMovimientos, useTrabajos } from "@/hooks/use-api";
 import { ROTULO_TIPO_TRABAJO } from "@/lib/dominio";
 import { capitalizar, fmtCop, fmtPct } from "@/lib/format";
@@ -27,6 +28,7 @@ export function IngresosView() {
   const { data: movs = [] } = useMovimientos();
   const [estado, setEstado] = useState<EstadoIngresos>("completados");
   const [anio, setAnio] = useState("");
+  const rec = ingresoRecurrente(trabajos.map((t) => ({ ...t, activa: t.estado === "en_curso" })));
   const r = useMemo(
     () => resumenIngresos({ trabajos, clientes, movs, filtro: { estado, anio } }),
     [trabajos, clientes, movs, estado, anio],
@@ -103,6 +105,12 @@ export function IngresosView() {
               ? "Salidas de inventario a estos servicios"
               : "Aún no hay salidas asociadas"
           }
+        />
+        <StatCard
+          label="Ingreso recurrente"
+          value={`${fmtCop(rec.mensual)} / mes`}
+          icon={Repeat}
+          hint={`${rec.activas} suscripción(es) activa(s) hoy · ${fmtCop(rec.anual)} al año`}
         />
       </div>
 
